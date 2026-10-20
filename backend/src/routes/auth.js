@@ -326,19 +326,30 @@ router.post('/forgot-password', async (req, res, next) => {
         to: user.email,
         token: rawToken,
       });
+    
     } catch (emailError) {
+      console.error(
+        'Password reset email delivery failed:',
+        emailError.message
+      );
+
       await pool.query(
         `UPDATE password_reset_tokens
          SET used_at = NOW()
          WHERE token_hash = $1 AND used_at IS NULL`,
         [tokenHash]
-      );
+      ).catch((dbError) => {
+        console.error(
+          'Failed to invalidate password reset token:',
+          dbError.message
+        );
+      });
 
-      console.error('Password reset email delivery failed.');
       return res.status(503).json({
         error: 'Unable to send a password reset email right now. Please try again later.',
       });
     }
+
 
     return res.json({ message });
   } catch (err) {
