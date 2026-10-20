@@ -13,11 +13,7 @@ async function sendVerificationEmail({ to, token }) {
   const frontendUrl =
     process.env.FRONTEND_URL || 'http://localhost:5173';
 
-  const verificationUrl = new URL(
-    '/verify-email',
-    frontendUrl
-  );
-
+  const verificationUrl = new URL('/verify-email', frontendUrl);
   verificationUrl.searchParams.set('token', token);
   verificationUrl.searchParams.set('email', to);
 
@@ -26,12 +22,12 @@ async function sendVerificationEmail({ to, token }) {
     to: [to],
     subject: 'Verify your InvestmentPlus email',
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: auto;">
+      <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto">
         <h2>Welcome to InvestmentPlus</h2>
         <p>Please verify your email address to activate your account.</p>
         <p>
           <a href="${verificationUrl.toString()}"
-             style="display:inline-block;padding:12px 20px;background:#14532d;color:#fff;text-decoration:none;border-radius:6px;">
+             style="display:inline-block;padding:12px 20px;background:#14532d;color:#fff;text-decoration:none;border-radius:6px">
             Verify my email
           </a>
         </p>
@@ -49,4 +45,46 @@ async function sendVerificationEmail({ to, token }) {
   return data;
 }
 
-module.exports = { sendVerificationEmail };
+async function sendPasswordResetEmail({ to, token }) {
+  if (!resend) {
+    throw new Error('RESEND_API_KEY is not configured.');
+  }
+
+  const frontendUrl =
+    process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  const resetUrl = new URL('/reset-password', frontendUrl);
+  resetUrl.searchParams.set('token', token);
+
+  const { data, error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM || 'InvestmentPlus <onboarding@resend.dev>',
+    to: [to],
+    subject: 'Reset your InvestmentPlus password',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto">
+        <h2>Reset your password</h2>
+        <p>We received a request to reset your InvestmentPlus password.</p>
+        <p>
+          <a href="${resetUrl.toString()}"
+             style="display:inline-block;padding:12px 20px;background:#14532d;color:#fff;text-decoration:none;border-radius:6px">
+            Reset my password
+          </a>
+        </p>
+        <p>This link expires in 30 minutes and can only be used once.</p>
+        <p>If you didn't request a password reset, ignore this email. Your password will remain unchanged.</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error('Resend password reset email error:', error.message);
+    throw new Error('Unable to send password reset email.');
+  }
+
+  return data;
+}
+
+module.exports = {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+};

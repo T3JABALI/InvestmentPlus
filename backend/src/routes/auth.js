@@ -7,6 +7,7 @@ const { z } = require('zod');
 const { pool } = require('../db/pool');
 const {
   sendVerificationEmail,
+  sendPasswordResetEmail,
 } = require('../services/email');
 const {
   generateVerificationToken,
@@ -36,6 +37,14 @@ const loginSchema = z.object({
 
 const verifySchema = z.object({
   token: z.string().regex(/^[a-f0-9]{64}$/i),
+});
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email().max(254),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().regex(/^[a-f0-9]{64}$/i),
+  password: passwordSchema,
 });
 
 function createToken(user) {
@@ -258,5 +267,144 @@ router.post('/login', async (req, res, next) => {
     next(err);
   }
 });
+
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Enter a valid email address.',
+      });
+    }
+
+    const email = parsed.data.email.toLowerCase();
+
+    const result = await pool.query(
+      `SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1`,
+      [email]
+    );
+
+    // Return the same response whether or not the account exists.
+    const message =
+      'If an account exists for that email, a password reset link will be sent.';
+
+    if (!result.rowCount) {
+      return res.json({ message });
+    }
+
+    const user = result.rows[0];
+    const rawToken = generateVerificationToken();
+    const tokenHash = hashVerificationToken(rawToken);
+
+    await pool.query(
+      `UPDATE password_reset_tokens
+       SET used_at = NOW()
+       WHERE user_id = $1 AND used_at IS NULL`,
+      [user.id]
+    );
+
+    await pool.query(
+      `INSERT INTO password_reset_tokens
+         (user_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [user.id, tokenHash, getVerificationExpiry()]
+    );
+
+    try {
+      await sendPasswordResetEmail({
+        to: user.email,
+        token: rawToken,
+      });
+    } catch (emailError) {
+      await pool.query(
+        `UPDATE password_reset_tokens
+         SET used_at = NOW()
+         WHERE token_hash = $1 AND used_at IS NULL`,
+        [tokenHash]
+      );
+
+      console.error('Password reset email delivery failed.');
+      return res.status(503).json({
+        error: 'Unable to send a password reset email right now. Please try again later.',
+      });
+    }
+
+    return res.json({ message });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/reset-password', async (req, res, next) => {
+  let client;
+
+  try {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'The reset link is invalid or the new password does not meet the requirements.',
+      });
+    }
+
+    const { token, password } = parsed.data;
+    const tokenHash = hashVerificationToken(token);
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const result = await client.query(
+        `SELECT id, user_id
+         FROM password_reset_tokens
+         WHERE token_hash = $1
+           AND used_at IS NULL
+           AND expires_at > NOW()
+         FOR UPDATE`,
+        [tokenHash]
+      );
+
+      if (!result.rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          error: 'The reset link is invalid, expired, or already used.',
+        });
+      }
+
+      const reset = result.rows[0];
+
+      await client.query(
+        `UPDATE users
+         SET password_hash = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [passwordHash, reset.user_id]
+      );
+
+      await client.query(
+        `UPDATE password_reset_tokens
+         SET used_at = NOW()
+         WHERE user_id = $1 AND used_at IS NULL`,
+        [reset.user_id]
+      );
+
+      await client.query('COMMIT');
+
+      return res.json({
+        message: 'Password reset successfully. You can now log in with your new password.',
+      });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 module.exports = router;
