@@ -128,7 +128,7 @@ router.post('/register', async (req, res, next) => {
       try {
         await sendVerificationEmail({ to: email, token: rawToken });
       } catch (emailError) {
-        console.error('Verification email delivery failed.');
+        console.error('Password reset email delivery failed:', emailError.message);
         return res.status(503).json({
           error: 'Your account was created, but the verification email could not be sent. Please try requesting a new verification email.',
           code: 'VERIFICATION_EMAIL_FAILED',
