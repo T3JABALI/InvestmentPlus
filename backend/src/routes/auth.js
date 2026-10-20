@@ -128,10 +128,20 @@ router.post('/register', async (req, res, next) => {
       try {
         await sendVerificationEmail({ to: email, token: rawToken });
       } catch (emailError) {
-        console.error('Password reset email delivery failed:', emailError.message);
+        await pool.query(
+          `UPDATE password_reset_tokens
+           SET used_at = NOW()
+           WHERE token_hash = $1 AND used_at IS NULL`,
+           [tokenHash]
+        );
+
+        console.error(
+          'Password reset email delivery failed:',
+          emailError.message
+        );
+
         return res.status(503).json({
-          error: 'Your account was created, but the verification email could not be sent. Please try requesting a new verification email.',
-          code: 'VERIFICATION_EMAIL_FAILED',
+          error: 'Unable to send a password reset email right now. Please try again later.',
         });
       }
 
