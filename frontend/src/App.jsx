@@ -963,147 +963,11 @@ function AuthPage({ mode }) {
         {message && <p role="status" className="auth-message">{message}</p>}
         <button className="btn btn-primary btn-large" style={{ alignSelf: 'flex-start' }} type="submit" disabled={busy}>{busy ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'} <ArrowRight size={17} /></button>
       </form>
-      
+      <p className="auth-switch">{isRegister ? 'Already have an account?' : 'New to InvestPlus?'} <Link className="auth-switch-link" to={isRegister ? '/login' : '/register'}>{isRegister ? 'Log in' : 'Create an account'}</Link></p>
       <Link to="/" className="text-link">Back to home</Link>
     </section>
   </div>;
 }
-
-function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-
-  async function submit(e) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    setMessage('');
-
-    try {
-      const response = await fetch(`${API_BASE}/api/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || 'Unable to request a reset link.');
-      }
-
-      setMessage(data.message || 'If an account exists for that email, a reset link will be sent.');
-    } catch (err) {
-      setError(err.message || 'Unable to connect to the server. Please try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="not-found auth-page" style={{ minHeight: '100vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '32px 16px', background: '#f5f8fa' }}>
-      <Brand />
-      <section className="panel auth-panel" style={{ width: 'min(100%, 620px)', boxSizing: 'border-box', padding: '32px 40px', borderRadius: 16, background: '#fff', textAlign: 'center' }}>
-        <div className="eyebrow">ACCOUNT RECOVERY</div>
-        <h1>Forgot your password?</h1>
-        <p>Enter your account email and we'll send you a password-reset link if an account exists.</p>
-        <form onSubmit={submit} className="auth-form" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 16, width: '100%', maxWidth: 560, margin: '24px auto' }}>
-          <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, textAlign: 'left' }}>
-            Email address
-            <input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={254} />
-          </label>
-          {error && <p role="alert" className="auth-error">{error}</p>}
-          {message && <p role="status" className="auth-message">{message}</p>}
-          <button className="btn btn-primary btn-large" type="submit" disabled={busy}>
-            {busy ? 'Please wait...' : 'Send reset link'} <ArrowRight size={17} />
-          </button>
-        </form>
-        <Link className="auth-switch-link" to="/login">Back to login</Link>
-      </section>
-    </div>
-  );
-}
-
-function ResetPasswordPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const token = new URLSearchParams(location.search).get('token') || '';
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-
-  async function submit(e) {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-
-    if (password !== confirmPassword) {
-      setError('The passwords do not match.');
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || 'Unable to reset your password.');
-      }
-
-      setMessage('Your password has been reset. Redirecting to login...');
-      setTimeout(() => navigate('/login', { replace: true }), 1500);
-    } catch (err) {
-      setError(err.message || 'Unable to connect to the server. Please try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="not-found auth-page" style={{ minHeight: '100vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '32px 16px', background: '#f5f8fa' }}>
-      <Brand />
-      <section className="panel auth-panel" style={{ width: 'min(100%, 620px)', boxSizing: 'border-box', padding: '32px 40px', borderRadius: 16, background: '#fff', textAlign: 'center' }}>
-        <div className="eyebrow">ACCOUNT SECURITY</div>
-        <h1>Reset your password</h1>
-        {!token ? (
-          <>
-            <p>This reset link is missing its token. Request a new one to continue.</p>
-            <Link className="btn btn-primary" to="/forgot-password">Request reset link</Link>
-          </>
-        ) : (
-          <>
-            <p>Choose a new password with at least 8 characters, including uppercase, lowercase, and a special character.</p>
-            <form onSubmit={submit} className="auth-form" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 16, width: '100%', maxWidth: 560, margin: '24px auto' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, textAlign: 'left' }}>
-                New password
-                <input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} maxLength={72} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, textAlign: 'left' }}>
-                Confirm new password
-                <input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} maxLength={72} />
-              </label>
-              {error && <p role="alert" className="auth-error">{error}</p>}
-              {message && <p role="status" className="auth-message">{message}</p>}
-              <button className="btn btn-primary btn-large" type="submit" disabled={busy}>
-                {busy ? 'Please wait...' : 'Reset password'} <ArrowRight size={17} />
-              </button>
-            </form>
-          </>
-        )}
-        <p><Link className="auth-switch-link" to="/login">Back to login</Link></p>
-      </section>
-    </div>
-  );
-}
-
 
 function RequireAuth({ children, admin = false }) {
   const token = localStorage.getItem('investplus_token');
@@ -1122,8 +986,6 @@ export default function App() {
     <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<AuthPage mode="login" />} />
     <Route path="/register" element={<AuthPage mode="register" />} />
-    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-    <Route path="/reset-password" element={<ResetPasswordPage />} /> 
 
     <Route path="/member" element={<RequireAuth><MemberDashboard /></RequireAuth>} />
 
