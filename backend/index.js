@@ -10,8 +10,6 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(helmet());
 
-const cors = require('cors');
-
 app.use(cors({
   origin: 'https://investmentplus.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
