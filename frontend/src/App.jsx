@@ -948,23 +948,23 @@ function AuthPage({ mode }) {
     } finally { setBusy(false); }
   }
 
-  return <div className="not-found auth-page">
+  return <div className="not-found auth-page" style={{ minHeight: '100vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '32px 16px', background: '#f5f8fa' }}>
     <Brand />
-    <section className="panel auth-panel">
+    <section className="panel auth-panel" style={{ width: 'min(100%, 620px)', boxSizing: 'border-box', padding: '32px 40px', borderRadius: 16, background: '#fff', textAlign: 'center' }}>
       <div className="eyebrow">{isRegister ? 'JOIN INVESTPLUS' : 'MEMBER ACCESS'}</div>
       <h1>{isRegister ? 'Create your account' : 'Welcome back'}</h1>
       <p>{isRegister ? 'Register with your details to get started.' : 'Log in to view your account and recorded activity.'}</p>
-      <form onSubmit={submit} className="auth-form">
-        {isRegister && <label>Full name<input autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} required minLength={2} maxLength={120} /></label>}
-        <label>Email address<input type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={254} /></label>
-        <label>Password<input type="password" autoComplete={isRegister ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={isRegister ? 8 : 1} maxLength={72} /></label>
-        {isRegister && <small>Use at least 8 characters, including uppercase, lowercase, and a special character.</small>}
+      <form onSubmit={submit} className="auth-form" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 16, width: '100%', maxWidth: 560, margin: '24px auto' }}>
+        {isRegister && <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>Full name<input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} required minLength={2} maxLength={120} /></label>}
+        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>Email address<input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={254} /></label>
+        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>Password<input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} type="password" autoComplete={isRegister ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={isRegister ? 8 : 1} maxLength={72} /></label>
+        {isRegister && <small style={{ display: 'block', textAlign: 'left', lineHeight: 1.5 }}>Use at least 8 characters, including uppercase, lowercase, and a special character.</small>}
         {error && <p role="alert" className="auth-error">{error}</p>}
         {message && <p role="status" className="auth-message">{message}</p>}
-        <button className="btn btn-primary btn-large" type="submit" disabled={busy}>{busy ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'} <ArrowRight size={17} /></button>
+        <button className="btn btn-primary btn-large" style={{ alignSelf: 'flex-start' }} type="submit" disabled={busy}>{busy ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'} <ArrowRight size={17} /></button>
       </form>
       <p>{isRegister ? 'Already registered?' : 'New to InvestPlus?'} <Link to={isRegister ? '/login' : '/register'}>{isRegister ? 'Log in' : 'Create an account'}</Link></p>
-      <Link to="/" className="text-link">Back to website</Link>
+      <Link to="/" className="text-link">Back to home</Link>
     </section>
   </div>;
 }
