@@ -963,7 +963,7 @@ function AuthPage({ mode }) {
         {message && <p role="status" className="auth-message">{message}</p>}
         <button className="btn btn-primary btn-large" style={{ alignSelf: 'flex-start' }} type="submit" disabled={busy}>{busy ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'} <ArrowRight size={17} /></button>
       </form>
-      <p>{isRegister ? 'Already registered?' : 'New to InvestPlus?'} <Link to={isRegister ? '/login' : '/register'}>{isRegister ? 'Log in' : 'Create an account'}</Link></p>
+      <p className="auth-switch">{isRegister ? 'Already have an account?' : 'New to InvestPlus?'} <Link className="auth-switch-link" to={isRegister ? '/login' : '/register'}>{isRegister ? 'Log in' : 'Create an account'}</Link></p>
       <Link to="/" className="text-link">Back to home</Link>
     </section>
   </div>;
