@@ -417,6 +417,7 @@ function StatCard({ icon: Icon, label, value, change, tone = 'green', note }) {
 }
 
 
+
 function MemberDashboard() {
   const currentUser = (() => {
     try {
@@ -429,197 +430,233 @@ function MemberDashboard() {
   })();
 
   const [period, setPeriod] = useState('7 days');
+  const [overview, setOverview] = useState(null);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [loadingFinance, setLoadingFinance] = useState(true);
+  const [financeError, setFinanceError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadFinance() {
+      const token = localStorage.getItem('investplus_token');
+
+      if (!token) {
+        setFinanceError('Please log in again to view your account.');
+        setLoadingFinance(false);
+        return;
+      }
+
+      try {
+        setLoadingFinance(true);
+        setFinanceError('');
+
+        const headers = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        const [overviewResponse, transactionsResponse] =
+          await Promise.all([
+            fetch(`${API_BASE}/api/finance/overview`, {
+              headers,
+              signal: controller.signal,
+            }),
+            fetch(`${API_BASE}/api/finance/transactions`, {
+              headers,
+              signal: controller.signal,
+            }),
+          ]);
+
+        const overviewData = await overviewResponse.json();
+        const transactionsData = await transactionsResponse.json();
+
+        if (
+          overviewResponse.status === 401 ||
+          transactionsResponse.status === 401
+        ) {
+          throw new Error(
+            'Your session has expired. Please log in again.'
+          );
+        }
+
+        if (!overviewResponse.ok) {
+          throw new Error(
+            overviewData.error || 'Could not load your account overview.'
+          );
+        }
+
+        if (!transactionsResponse.ok) {
+          throw new Error(
+            transactionsData.error || 'Could not load your transactions.'
+          );
+        }
+
+        setOverview(overviewData.overview || overviewData);
+
+        const rows =
+          transactionsData.transactions ||
+          transactionsData.rows ||
+          [];
+
+        setRecentTransactions(Array.isArray(rows) ? rows : []);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setFinanceError(
+            error.message || 'Unable to load financial information.'
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingFinance(false);
+        }
+      }
+    }
+
+    loadFinance();
+
+    return () => controller.abort();
+  }, []);
+
+  const balance = overview?.balance ?? null;
+
+  const confirmedDeposits =
+    overview?.confirmed_deposits ??
+    overview?.confirmedDeposits ??
+    null;
 
   return (
-    <DashboardShell type="member">
-      <PageTitle
-        title={`Welcome back, ${currentUser?.fullName || 'Member'}`}
-        subtitle="Your account overview. Financial figures appear when verified records are available."
-        action={
-          <div className="demo-label">
-            <span /> LIVE DATA NOT CONNECTED
-          </div>
-        }
+  <DashboardShell type="member">
+    <PageTitle
+      title="Member Dashboard"
+      subtitle="Your account overview and financial activity."
+      action={
+        <div className="demo-label">
+          <span />
+          {loadingFinance ? 'LOADING ACCOUNT' : 'LIVE ACCOUNT DATA'}
+        </div>
+      }
+    />
+
+    <div className="stats-grid member-stats">
+      <StatCard
+        icon={Wallet}
+        label="Account balance"
+        value={loadingFinance ? 'Loading…' : formatMoney(balance)}
+        note="Calculated from the financial ledger"
+        tone="green"
       />
 
-      <div className="stats-grid member-stats">
-        <StatCard
-          icon={Wallet}
-          label="Account balance"
-          value="Not available"
-          note="No verified balance available"
-          tone="green"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Recorded activity"
-          value="Not available"
-          note="No transaction records available"
-          tone="blue"
-        />
-        <StatCard
-          icon={Users}
-          label="Referral commissions"
-          value="Not available"
-          note="No verified commission records"
-          tone="purple"
-        />
-        <StatCard
-          icon={CreditCard}
-          label="Available to request"
-          value="Not available"
-          note="Requires verified balance records"
-          tone="gold"
-        />
-      </div>
+      <StatCard
+        icon={ArrowDownLeft}
+        label="Confirmed deposits"
+        value={
+          loadingFinance
+            ? 'Loading…'
+            : formatMoney(confirmedDeposits)
+        }
+        note="Verified deposit credits only"
+        tone="blue"
+      />
 
-      <div className="dashboard-two-col member-main-grid">
-        <section className="panel chart-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Account activity</h2>
-              <p>Confirmed deposits and withdrawals only</p>
-            </div>
+      <StatCard
+        icon={ReceiptText}
+        label="Recorded transactions"
+        value={
+          loadingFinance
+            ? 'Loading…'
+            : recentTransactions.length.toLocaleString('en-KE')
+        }
+        note="Records returned by the API"
+        tone="purple"
+      />
 
-            <select
-              className="select-control"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <option>7 days</option>
-              <option>30 days</option>
-              <option>90 days</option>
-            </select>
-          </div>
+      <StatCard
+        icon={CreditCard}
+        label="Available to withdraw"
+        value="Not available"
+        note="Requires a verified withdrawal calculation"
+        tone="gold"
+      />
+    </div>
 
-          <div className="empty-financial-state">
-            <Activity size={28} />
-            <h3>No verified activity yet</h3>
-            <p>
-              Your activity chart will appear when the backend provides
-              verified transaction records for the selected period.
-            </p>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Referral link</h2>
-              <p>Your personal referral tools</p>
-            </div>
-            <span className="small-icon">
-              <Users size={17} />
-            </span>
-          </div>
-
-          <div className="empty-financial-state">
-            <Users size={26} />
-            <h3>Referral tracking unavailable</h3>
-            <p>
-              A personal referral link and referral statistics will appear
-              once referral tracking is connected to the backend.
-            </p>
-          </div>
-
-          <div className="referral-stats">
-            <div>
-              <span>Total referrals</span>
-              <b>Not available</b>
-              <small>Awaiting verified records</small>
-            </div>
-            <div>
-              <span>Eligible commissions</span>
-              <b>Not available</b>
-              <small>Awaiting commission records</small>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <div className="dashboard-two-col lower-grid">
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Active packages</h2>
-              <p>Your confirmed investment records</p>
-            </div>
-            <Link
-              to="/member/packages"
-              className="subtle-link"
-            >
-              View all <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div className="empty-financial-state">
-            <Package size={28} />
-            <h3>No package records available</h3>
-            <p>
-              Packages will appear here after the backend can retrieve
-              confirmed purchases associated with your account.
-            </p>
-          </div>
-
-          <div className="panel-bottom-link">
-            <Link to="/member/packages">
-              View package workspace <ArrowRight size={15} />
-            </Link>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Recent transactions</h2>
-              <p>Your recorded account activity</p>
-            </div>
-            <Link
-              to="/member/transactions"
-              className="subtle-link"
-            >
-              View all <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Transaction</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={3}>
-                    <div className="empty-table-message">
-                      No verified transactions are available yet.
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      <div className="notice-strip">
-        <ShieldCheck size={19} />
+    {financeError && (
+      <div className="notice-strip" role="alert">
+        <AlertCircle size={19} />
         <div>
-          <b>Financial records are not connected yet</b>
-          <p>
-            This dashboard does not currently retrieve balances, deposits,
-            withdrawals, investment records, or commissions from the
-            database. No financial amount displayed here should be treated
-            as an actual balance or proof of payment.
-          </p>
+          <b>Could not load your financial data</b>
+          <p>{financeError}</p>
         </div>
-      </div>
-    </DashboardShell>
+       </div>
+     )}
+
+     {
+<section className="panel">
+  <div className="panel-header">
+    <div>
+      <h2>Recent Transactions</h2>
+      <p>Your latest recorded financial activity.</p>
+    </div>
+    <span className="small-icon">
+      <ReceiptText size={17} />
+    </span>
+  </div>
+
+  <div className="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Transaction</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {loadingFinance ? (
+          <tr>
+            <td colSpan={3}>Loading transactions…</td>
+          </tr>
+        ) : recentTransactions.length === 0 ? (
+          <tr>
+            <td colSpan={3}>
+              No transactions have been recorded yet.
+            </td>
+          </tr>
+        ) : (
+          recentTransactions.slice(0, 5).map((transaction, index) => (
+            <tr key={transaction.id || index}>
+              <td>
+                {transaction.type ||
+                  transaction.description ||
+                  transaction.entry_type ||
+                  'Account transaction'}
+
+                <small style={{ display: 'block' }}>
+                  {transaction.created_at
+                    ? new Date(transaction.created_at).toLocaleDateString('en-KE')
+                    : ''}
+                </small>
+              </td>
+
+              <td>{formatMoney(transaction.amount)}</td>
+
+              <td>
+                <Status>
+                  {transaction.status || 'Recorded'}
+                </Status>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+</section>
+}
+   </DashboardShell>
   );
 }
+
 
 
 function AdminDashboard() {
@@ -786,7 +823,12 @@ function PlaceholderPage({ type }) {
 
         subtitle={config.subtitle}
 
-        action={<div className="demo-label"><span /> DEMO DATA</div>}
+        action={
+         <div className="demo-label">
+          <span />
+          {loadingFinance ? 'LOADING ACCOUNT' : 'LIVE ACCOUNT DATA'}
+          </div>
+      }
 
       />
 
