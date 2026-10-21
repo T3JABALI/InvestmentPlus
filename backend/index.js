@@ -8,6 +8,16 @@ const authRoutes = require('./src/routes/auth');
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const financeRoutes = require('./src/routes/finance');
+const allowedOrigins = [
+  'https://investmentplus.vercel.app',
+  'http://localhost:5173',
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 app.use('/api/finance', financeRoutes);
 app.use(helmet());
