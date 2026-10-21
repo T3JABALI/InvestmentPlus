@@ -1,0 +1,111 @@
+
+const express = require('express');
+const { pool } = require('../db/pool');
+const { requireAuth } = require('../middleware/requireAuth');
+
+const router = express.Router();
+
+// GET /api/finance/overview
+router.get('/overview', requireAuth, async (req, res) => {
+  try {
+   
+const result = await pool.query(
+  `SELECT
+     COALESCE(SUM(
+       CASE WHEN direction = 'credit' THEN amount ELSE -amount END
+     ), 0)::text AS balance,
+
+     COALESCE(SUM(
+       CASE WHEN entry_type = 'deposit_credit' THEN amount ELSE 0 END
+     ), 0)::text AS confirmed_deposits,
+
+     COALESCE(SUM(
+       CASE WHEN direction = 'credit' THEN amount ELSE 0 END
+     ), 0)::text AS total_credits,
+
+     COALESCE(SUM(
+       CASE WHEN direction = 'debit' THEN amount ELSE 0 END
+     ), 0)::text AS total_debits,
+
+     COALESCE(SUM(
+       CASE WHEN entry_type = 'withdrawal_reservation'
+         THEN amount ELSE 0 END
+     ), 0)::text AS withdrawal_reservations
+
+   FROM financial_ledger
+   WHERE user_id = $1`,
+  [req.user.id]
+);
+
+
+
+    const totals = result.rows[0];
+    const balance = (
+      Number(totals.total_credits) - Number(totals.total_debits)
+    ).toFixed(2);
+
+    return res.json({
+      currency: 'KES',
+      balance,
+      confirmedDeposits: totals.confirmed_deposits,
+      totalCredits: totals.total_credits,
+      totalDebits: totals.total_debits,
+      withdrawalReservations: totals.withdrawal_reservations,
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('Finance overview error:', error);
+    return res.status(500).json({
+      error: 'Unable to load financial overview.',
+    });
+  }
+});
+
+// GET /api/finance/transactions
+router.get('/transactions', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT *
+       FROM (
+         SELECT
+           id::text AS id,
+           'deposit'::text AS type,
+           amount::text AS amount,
+           currency,
+           status,
+           COALESCE(provider_reference, api_ref::text) AS reference,
+           created_at
+         FROM deposit_requests
+         WHERE user_id = $1
+
+         UNION ALL
+
+         SELECT
+           id::text AS id,
+           'withdrawal'::text AS type,
+           amount::text AS amount,
+           currency,
+           status,
+           payout_reference AS reference,
+           created_at
+         FROM withdrawal_requests
+         WHERE user_id = $1
+       ) AS transactions
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [req.user.id]
+    );
+
+    return res.json({
+      transactions: result.rows,
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('Finance transactions error:', error);
+    return res.status(500).json({
+      error: 'Unable to load transactions.',
+    });
+  }
+});
+
+module.exports = router;

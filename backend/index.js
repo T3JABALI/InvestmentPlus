@@ -7,7 +7,9 @@ const authRoutes = require('./src/routes/auth');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const financeRoutes = require('./src/routes/finance');
 
+app.use('/api/finance', financeRoutes);
 app.use(helmet());
 
 app.use(cors({
