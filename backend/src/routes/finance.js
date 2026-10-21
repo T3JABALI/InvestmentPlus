@@ -218,5 +218,44 @@ router.get('/packages', requireAuth, async (req, res) => {
   }
 });
 
+/* GET /api/finance/my-packages
+   Returns only packages owned by the authenticated member. */
+router.get('/my-packages', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         up.id::text AS subscription_id,
+         ip.id::text AS package_id,
+         ip.name,
+         up.purchase_amount::text AS price,
+         ip.daily_return::text AS daily,
+         ip.duration_days AS duration,
+         ip.description,
+         up.status,
+         up.started_at,
+         up.expires_at,
+         up.created_at
+       FROM user_packages up
+       JOIN investment_packages ip
+         ON ip.id = up.package_id
+       WHERE up.user_id = $1
+       ORDER BY up.created_at DESC`,
+      [req.user.id]
+    );
+
+    return res.json({
+      packages: result.rows,
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('My packages error:', error);
+
+    return res.status(500).json({
+      error: 'Unable to load your packages.',
+    });
+  }
+});
+
+
 
 module.exports = router;
