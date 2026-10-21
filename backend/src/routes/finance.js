@@ -108,4 +108,115 @@ router.get('/transactions', requireAuth, async (req, res) => {
   }
 });
 
+ // GET /api/finance/earnings
+ // Shows real referral commissions recorded in the ledger.
+router.get('/earnings', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         id::text AS id,
+         entry_type,
+         amount::text AS amount,
+         currency,
+         description,
+         reference_type,
+         reference_id,
+         created_at
+       FROM financial_ledger
+       WHERE user_id = $1
+         AND entry_type = 'referral_commission'
+         AND direction = 'credit'
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [req.user.id]
+    );
+
+    const totalResult = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0)::text AS total
+       FROM financial_ledger
+       WHERE user_id = $1
+         AND entry_type = 'referral_commission'
+         AND direction = 'credit'`,
+      [req.user.id]
+    );
+
+    return res.json({
+      currency: 'KES',
+      total: totalResult.rows[0].total,
+      earnings: result.rows,
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('Finance earnings error:', error);
+    return res.status(500).json({
+      error: 'Unable to load earnings.',
+    });
+  }
+});
+
+// GET /api/finance/withdrawals
+router.get('/withdrawals', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         id::text AS id,
+         amount::text AS amount,
+         fee::text AS fee,
+         currency,
+         destination_phone,
+         status,
+         payout_reference,
+         admin_note,
+         created_at,
+         updated_at,
+         reviewed_at,
+         paid_at
+       FROM withdrawal_requests
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [req.user.id]
+    );
+
+    return res.json({
+      currency: 'KES',
+      withdrawals: result.rows,
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('Finance withdrawals error:', error);
+    return res.status(500).json({
+      error: 'Unable to load withdrawals.',
+    });
+  }
+});
+
+router.get('/packages', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         id::text AS id,
+         name,
+         price::text AS price,
+         daily_return::text AS daily,
+         duration_days AS duration,
+         description
+       FROM investment_packages
+       WHERE is_active = TRUE
+       ORDER BY price ASC`
+    );
+
+    return res.json({
+      packages: result.rows,
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('Finance packages error:', error);
+    return res.status(500).json({
+      error: 'Unable to load packages.',
+    });
+  }
+});
+
+
 module.exports = router;

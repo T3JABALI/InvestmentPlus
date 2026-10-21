@@ -685,464 +685,390 @@ function AdminDashboard() {
 
 }
 
+
 function PlaceholderPage({ type }) {
-
-  const isAdmin = type === 'admin'
-
-  const { pathname } = useLocation()
-
-  const path = pathname.replace(/\/$/, '')
-
-  const last = path.split('/').pop()
-
-  const title = last.replace(/-/g, ' ')
-
-  const proper = title ? title[0].toUpperCase() + title.slice(1) : 'Overview'
-
-  if (isAdmin) {
-
-    return (
-
-      <DashboardShell type="admin">
-
-        <PageTitle title={proper} subtitle="Administration workspace." />
-
-        <div className="panel placeholder-panel">
-
-          <div className="placeholder-icon">
-
-            <ConstructionIcon />
-
-          </div>
-
-          <h2>{proper} workspace</h2>
-
-          <p>
-
-            This administration page still needs authenticated backend
-
-            endpoints, database records, and role-based permissions before it
-
-            can manage real activity.
-
-          </p>
-
-          <Link to="/admin" className="btn btn-primary">
-
-            Back to overview <ArrowRight size={16} />
-
-          </Link>
-
-        </div>
-
-      </DashboardShell>
-
-    )
-
-  }
+  const isAdmin = type === 'admin';
+  const { pathname } = useLocation();
+  const last = pathname.replace(/\/$/, '').split('/').pop();
 
   const pageConfig = {
-
     packages: {
-
       title: 'My Packages',
-
-      subtitle: 'Review package tiers and illustrative activity.',
-
+      subtitle: 'View the available packages from the database.',
     },
-
     earnings: {
-
       title: 'Earnings Activity',
-
-      subtitle: 'Review sample earning records and their statuses.',
-
+      subtitle: 'Review recorded referral commissions.',
     },
-
     referrals: {
-
       title: 'Referrals',
-
-      subtitle: 'View the sample referral link and commission records.',
-
+      subtitle: 'Review your referral activity.',
     },
-
     withdrawals: {
-
       title: 'Withdrawals',
-
-      subtitle: 'Review the sample withdrawal workflow.',
-
+      subtitle: 'Review your actual withdrawal requests.',
     },
-
     transactions: {
-
       title: 'Transactions',
-
-      subtitle: 'Review sample account transaction records.',
-
+      subtitle: 'Review recorded deposits and withdrawals.',
     },
+  };
 
+  const config = pageConfig[last];
+
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState('0.00');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isAdmin || !config || last === 'referrals') return;
+
+    const controller = new AbortController();
+
+    async function loadPage() {
+      const token = localStorage.getItem('investplus_token');
+
+      if (!token) {
+        setError('Please log in again to view your account.');
+        return;
+      }
+
+      const endpoint = {
+        packages: '/api/finance/packages',
+        earnings: '/api/finance/earnings',
+        withdrawals: '/api/finance/withdrawals',
+        transactions: '/api/finance/transactions',
+      }[last];
+
+      if (!endpoint) return;
+
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please log in again.');
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Unable to load this page.');
+        }
+
+        let result = [];
+
+        if (last === 'packages') {
+          result = data.packages || [];
+        } else if (last === 'earnings') {
+          result = data.earnings || [];
+          setTotal(data.total ?? '0.00');
+        } else if (last === 'withdrawals') {
+          result = data.withdrawals || [];
+        } else if (last === 'transactions') {
+          result = data.transactions || [];
+        }
+
+        setRows(Array.isArray(result) ? result : []);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setError(err.message || 'Unable to load account data.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    loadPage();
+
+    return () => controller.abort();
+  }, [last, isAdmin]);
+
+  if (isAdmin) {
+    return (
+      <DashboardShell type="admin">
+        <PageTitle title="Administration" subtitle="Administration workspace." />
+        <div className="panel placeholder-panel">
+          <div className="placeholder-icon"><ConstructionIcon /></div>
+          <h2>Administration workspace</h2>
+          <p>This page needs its own authenticated administration API.</p>
+          <Link to="/admin" className="btn btn-primary">
+            Back to overview <ArrowRight size={16} />
+          </Link>
+        </div>
+      </DashboardShell>
+    );
   }
 
-  const config = pageConfig[last]
-
   if (!config) {
-
     return (
-
       <DashboardShell type="member">
-
-        <PageTitle title={proper} subtitle="Member workspace." />
-
+        <PageTitle title="Page not found" subtitle="Member workspace." />
         <div className="panel placeholder-panel">
-
           <h2>Page not found</h2>
-
-          <Link to="/register" className="btn btn-primary">
-
+          <Link to="/member" className="btn btn-primary">
             Back to overview <ArrowRight size={16} />
-
           </Link>
-
         </div>
-
       </DashboardShell>
+    );
+  }
 
-    )
+  const packageAppearance = {
+    Basic: { tone: 'mint', icon: 'sprout' },
+    Beginner: { tone: 'blue', icon: 'layers' },
+    'Semi Pro': { tone: 'violet', icon: 'settings' },
+    Pro: { tone: 'gold', icon: 'gem' },
+    Premium: { tone: 'orange', icon: 'crown' },
+    Star: { tone: 'pink', icon: 'star' },
+    'World Class': { tone: 'teal', icon: 'globe' },
+  };
 
+  const emptyMessage = {
+    packages: 'No active packages are available.',
+    earnings: 'No earnings have been recorded yet.',
+    referrals: 'No referral records are available yet.',
+    withdrawals: 'You have no withdrawal requests yet.',
+    transactions: 'No transactions have been recorded yet.',
+  }[last];
+
+  function dateLabel(value) {
+    return value
+      ? new Date(value).toLocaleDateString('en-KE')
+      : '—';
+  }
+
+  function statusLabel(value) {
+    return value || 'Recorded';
   }
 
   return (
-
     <DashboardShell type="member">
-
       <PageTitle
-
         title={config.title}
-
         subtitle={config.subtitle}
-
         action={
-         <div className="demo-label">
-          <span />
-          {loadingFinance ? 'LOADING ACCOUNT' : 'LIVE ACCOUNT DATA'}
+          <div className="demo-label">
+            <span />
+            {loading ? 'LOADING ACCOUNT' : 'ACCOUNT DATA'}
           </div>
-      }
-
+        }
       />
 
-      <div className="notice-strip">
-
-        <ShieldCheck size={19} />
-
-        <div>
-
-          <b>Demonstration records only</b>
-
-          <p>
-
-            This page displays frontend sample data. It does not confirm actual
-
-            investments, earnings, payments, commissions, or withdrawable funds.
-
-          </p>
-
+      {error && (
+        <div className="notice-strip" role="alert">
+          <AlertCircle size={19} />
+          <div>
+            <b>Unable to load your data</b>
+            <p>{error}</p>
+          </div>
         </div>
+      )}
 
-      </div>
+      {loading && (
+        <div className="panel">
+          <p>Loading your account data…</p>
+        </div>
+      )}
 
-      {last === 'packages' && (
-
+      {!loading && !error && last === 'packages' && (
         <div className="package-grid">
+          {rows.length === 0 ? (
+            <div className="panel">
+              <p>{emptyMessage}</p>
+            </div>
+          ) : rows.map((pkg) => {
+            const appearance = packageAppearance[pkg.name] || {
+              tone: 'mint',
+              icon: 'sprout',
+            };
 
-          {packages.map((pkg) => (
-
-            <section className="panel" key={pkg.name}>
-
-              <div className={`package-icon ${pkg.tone}`}>
-
-                <PackageIcon name={pkg.icon} />
-
-              </div>
-
-              <h3>{pkg.name}</h3>
-
-              <p>{pkg.description}</p>
-
-              <div className="package-price">
-
-                {money(pkg.price)}
-
-                <small>Illustrative package price</small>
-
-              </div>
-
-              <div className="package-details">
-
-                <div>
-
-                  <span>Proposed daily figure</span>
-
-                  <b>{money(pkg.daily)}</b>
-
+            return (
+              <section className="panel" key={pkg.id}>
+                <div className={`package-icon ${appearance.tone}`}>
+                  <PackageIcon name={appearance.icon} />
                 </div>
-
-                <div>
-
-                  <span>Proposed duration</span>
-
-                  <b>{pkg.duration} days</b>
-
+                <h3>{pkg.name}</h3>
+                <p>{pkg.description}</p>
+                <div className="package-price">
+                  {formatMoney(pkg.price)}
+                  <small>Package price</small>
                 </div>
-
-              </div>
-
-            </section>
-
-          ))}
-
+                <div className="package-details">
+                  <div>
+                    <span>Configured daily figure</span>
+                    <b>{formatMoney(pkg.daily)}</b>
+                  </div>
+                  <div>
+                    <span>Duration</span>
+                    <b>{pkg.duration} days</b>
+                  </div>
+                </div>
+              </section>
+            );
+          })}
         </div>
-
       )}
 
-      {last === 'earnings' && (
+      {!loading && !error && last === 'earnings' && (
+        <>
+          <div className="stats-grid member-stats">
+            <StatCard
+              icon={TrendingUp}
+              label="Recorded commissions"
+              value={formatMoney(total)}
+              note="Confirmed ledger credits"
+              tone="green"
+            />
+            <StatCard
+              icon={ReceiptText}
+              label="Earning records"
+              value={rows.length.toLocaleString('en-KE')}
+              note="Records returned by the API"
+              tone="blue"
+            />
+          </div>
 
-        <section className="panel">
-
-          <div className="panel-header">
-
-            <div>
-
-              <h2>Earnings ledger</h2>
-
-              <p>Illustrative records from the existing sample data.</p>
-
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h2>Earnings ledger</h2>
+                <p>Recorded referral commission credits.</p>
+              </div>
             </div>
-
-          </div>
-
-          <div className="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-
-                  <th>Date</th>
-
-                  <th>Activity</th>
-
-                  <th>Amount</th>
-
-                  <th>Status</th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {transactions
-
-                  .filter((t) => ['Referral', 'Payout'].includes(t.type))
-
-                  .map((t, i) => (
-
-                    <tr key={`${t.type}-${i}`}>
-
-                      <td>{t.date}</td>
-
-                      <td>{t.detail}</td>
-
-                      <td>{money(t.amount)}</td>
-
-                      <td><Status>{t.status}</Status></td>
-
-                    </tr>
-
-                  ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </section>
-
-      )}
-
-      {last === 'referrals' && (
-
-        <section className="panel">
-
-          <div className="panel-header">
-
-            <div>
-
-              <h2>Your referral tools</h2>
-
-              <p>Example link only; no live referral tracking yet.</p>
-
-            </div>
-
-          </div>
-
-          <div className="referral-link-box">
-
-            <span>https://investplus.example/ref/JOHN123</span>
-
-          </div>
-
-          <div className="panel-divider" />
-
-          <div className="referral-callout">
-
-            <span><Users size={18} /></span>
-
-            <p>
-
-              <b>Proposed referral rate: 15%</b>
-
-              <small>
-
-                Subject to published terms, eligible verified purchases, and
-
-                backend commission calculations. No commission is confirmed by
-
-                this demonstration.
-
-              </small>
-
-            </p>
-
-          </div>
-
-        </section>
-
-      )}
-
-      {last === 'withdrawals' && (
-
-        <section className="panel">
-
-          <div className="panel-header">
-
-            <div>
-
-              <h2>Withdrawal history</h2>
-
-              <p>Example workflow; requests are not submitted.</p>
-
-            </div>
-
-          </div>
-
-          <div className="notice-strip">
-
-            <AlertCircle size={19} />
-
-            <div>
-
-              <b>Withdrawal requests are not enabled</b>
-
-              <p>
-
-                A secure backend must verify available funds, validate the
-
-                recipient details, prevent duplicate requests, and record
-
-                approval and payment status.
-
-              </p>
-
-            </div>
-
-          </div>
-
-        </section>
-
-      )}
-
-      {last === 'transactions' && (
-
-        <section className="panel">
-
-          <div className="panel-header">
-
-            <div>
-
-              <h2>Transaction history</h2>
-
-              <p>Illustrative records, not verified account activity.</p>
-
-            </div>
-
-          </div>
-
-          <div className="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-
-                  <th>Date</th>
-
-                  <th>Transaction</th>
-
-                  <th>Details</th>
-
-                  <th>Amount</th>
-
-                  <th>Status</th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {transactions.map((t, i) => (
-
-                  <tr key={`${t.type}-${i}`}>
-
-                    <td>{t.date}</td>
-
-                    <td>{t.type}</td>
-
-                    <td>{t.detail}</td>
-
-                    <td className={t.amount > 0 ? 'amount-positive' : ''}>
-
-                      {t.amount > 0 ? '+' : ''}{money(t.amount)}
-
-                    </td>
-
-                    <td><Status>{t.status}</Status></td>
-
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
                   </tr>
-
-                ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </section>
-
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr><td colSpan={3}>{emptyMessage}</td></tr>
+                  ) : rows.map((item) => (
+                    <tr key={item.id}>
+                      <td>{dateLabel(item.created_at)}</td>
+                      <td>{item.description || 'Referral commission'}</td>
+                      <td>{formatMoney(item.amount, item.currency || 'KES')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
       )}
 
+      {!loading && !error && last === 'withdrawals' && (
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2>Withdrawal history</h2>
+              <p>Your submitted withdrawal requests and their statuses.</p>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Fee</th>
+                  <th>Destination</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr><td colSpan={5}>{emptyMessage}</td></tr>
+                ) : rows.map((item) => (
+                  <tr key={item.id}>
+                    <td>{dateLabel(item.created_at)}</td>
+                    <td>{formatMoney(item.amount, item.currency || 'KES')}</td>
+                    <td>{formatMoney(item.fee, item.currency || 'KES')}</td>
+                    <td>{item.destination_phone}</td>
+                    <td><Status>{statusLabel(item.status)}</Status></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {!loading && !error && last === 'transactions' && (
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2>Transaction history</h2>
+              <p>Deposits and withdrawals recorded for your account.</p>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Transaction</th>
+                  <th>Reference</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr><td colSpan={5}>{emptyMessage}</td></tr>
+                ) : rows.map((item, index) => (
+                  <tr key={`${item.type}-${item.id || index}`}>
+                    <td>{dateLabel(item.created_at)}</td>
+                    <td>{item.type || 'Transaction'}</td>
+                    <td>{item.reference || '—'}</td>
+                    <td>{formatMoney(item.amount, item.currency || 'KES')}</td>
+                    <td><Status>{statusLabel(item.status)}</Status></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {!loading && !error && last === 'referrals' && (
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2>Your referrals</h2>
+              <p>Referral information from your account.</p>
+            </div>
+          </div>
+          <div className="notice-strip">
+            <AlertCircle size={19} />
+            <div>
+              <b>Referral tracking is not connected yet</b>
+              <p>
+                Your current database schema does not define referral
+                relationships or a referral endpoint. No referral counts
+                or commissions will be fabricated.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
     </DashboardShell>
-
-  )
-
+  );
 }
+
 
 function ConstructionIcon() { return <Settings size={28} /> }
 
