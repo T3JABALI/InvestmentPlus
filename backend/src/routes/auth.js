@@ -2,13 +2,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const { z } = require('zod');
+
 const { pool } = require('../db/pool');
-const {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-} = require('../services/email');
+const { sendVerificationEmail } = require('../services/email');
 const {
   generateVerificationToken,
   hashVerificationToken,
@@ -17,7 +14,8 @@ const {
 
 const router = express.Router();
 
-const passwordSchema = z.string()
+const passwordSchema = z
+  .string()
   .min(8, 'Password must contain at least 8 characters.')
   .max(72, 'Password must not exceed 72 characters.')
   .regex(/[A-Z]/, 'Password must contain an uppercase letter.')
@@ -38,13 +36,9 @@ const loginSchema = z.object({
 const verifySchema = z.object({
   token: z.string().regex(/^[a-f0-9]{64}$/i),
 });
-const forgotPasswordSchema = z.object({
-  email: z.string().trim().email().max(254),
-});
 
-const resetPasswordSchema = z.object({
-  token: z.string().regex(/^[a-f0-9]{64}$/i),
-  password: passwordSchema,
+const emailSchema = z.object({
+  email: z.string().trim().email().max(254),
 });
 
 function createToken(user) {
@@ -53,7 +47,10 @@ function createToken(user) {
   }
 
   return jwt.sign(
-    { sub: String(user.id), role: user.role },
+    {
+      sub: String(user.id),
+      role: user.role,
+    },
     process.env.JWT_SECRET,
     {
       expiresIn: '1h',
@@ -74,6 +71,82 @@ function publicUser(user) {
   };
 }
 
+// Verify a JWT and confirm that the account still exists.
+async function requireAuth(req, res, next) {
+  try {
+    const authorization = req.get('Authorization');
+
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Authentication is required.',
+      });
+    }
+
+    const token = authorization.slice(7).trim();
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Authentication is required.',
+      });
+    }
+
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+      throw new Error('JWT_SECRET is not configured correctly.');
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      issuer: 'investmentplus-api',
+      audience: 'investmentplus-web',
+    });
+
+    if (!decoded.sub || !/^\d+$/.test(String(decoded.sub))) {
+      return res.status(401).json({
+        error: 'Invalid or expired authentication token.',
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT id, full_name, email, role, email_verified, created_at
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [decoded.sub]
+    );
+
+    if (!result.rowCount) {
+      return res.status(401).json({
+        error: 'This account no longer exists.',
+      });
+    }
+
+    const user = result.rows[0];
+
+    if (!user.email_verified) {
+      return res.status(403).json({
+        error: 'Please verify your email address.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+    }
+
+    // Use the current database role, not just the JWT role.
+    req.user = publicUser(user);
+    next();
+  } catch (err) {
+    if (
+      err.name === 'JsonWebTokenError' ||
+      err.name === 'TokenExpiredError' ||
+      err.name === 'NotBeforeError'
+    ) {
+      return res.status(401).json({
+        error: 'Invalid or expired authentication token.',
+      });
+    }
+
+    next(err);
+  }
+}
+
+// REGISTER
 router.post('/register', async (req, res, next) => {
   let client;
 
@@ -83,7 +156,7 @@ router.post('/register', async (req, res, next) => {
     if (!parsed.success) {
       return res.status(400).json({
         error: 'Please check your registration details.',
-        details: parsed.error.issues.map(issue => ({
+        details: parsed.error.issues.map((issue) => ({
           field: issue.path.join('.'),
           message: issue.message,
         })),
@@ -93,10 +166,13 @@ router.post('/register', async (req, res, next) => {
     const { fullName, password } = parsed.data;
     const email = parsed.data.email.toLowerCase();
     const passwordHash = await bcrypt.hash(password, 12);
+
     const rawToken = generateVerificationToken();
     const tokenHash = hashVerificationToken(rawToken);
 
     client = await pool.connect();
+
+    let user;
 
     try {
       await client.query('BEGIN');
@@ -111,55 +187,73 @@ router.post('/register', async (req, res, next) => {
 
       if (!result.rowCount) {
         await client.query('ROLLBACK');
+
         return res.status(409).json({
           error: 'An account with that email may already exist. Try logging in.',
         });
       }
 
+      user = result.rows[0];
+
       await client.query(
         `INSERT INTO email_verification_tokens
-           (user_id, token_hash, expires_at)
+          (user_id, token_hash, expires_at)
          VALUES ($1, $2, $3)`,
-        [result.rows[0].id, tokenHash, getVerificationExpiry()]
+        [user.id, tokenHash, getVerificationExpiry()]
       );
 
       await client.query('COMMIT');
-
-      try {
-        await sendVerificationEmail({ to: email, token: rawToken });
-      } catch (emailError) {
-        await pool.query(
-          `UPDATE password_reset_tokens
-           SET used_at = NOW()
-           WHERE token_hash = $1 AND used_at IS NULL`,
-           [tokenHash]
-        );
-
-        console.error(
-          'Password reset email delivery failed:',
-          emailError.message
-        );
-
-        return res.status(503).json({
-          error: 'Unable to send a password reset email right now. Please try again later.',
-        });
-      }
-
-      return res.status(201).json({
-        message: 'Account created. Check your email for a verification link.',
-        user: publicUser(result.rows[0]),
-      });
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
       throw err;
     } finally {
       client.release();
+      client = null;
     }
+
+    try {
+      await sendVerificationEmail({
+        to: email,
+        token: rawToken,
+      });
+    } catch (emailError) {
+      console.error(
+        'Verification email delivery failed:',
+        emailError.message
+      );
+
+      // Invalidate this verification link using the existing table.
+      await pool
+        .query(
+          `UPDATE email_verification_tokens
+           SET used_at = NOW()
+           WHERE token_hash = $1 AND used_at IS NULL`,
+          [tokenHash]
+        )
+        .catch((dbError) => {
+          console.error(
+            'Failed to invalidate verification token:',
+            dbError.message
+          );
+        });
+
+      return res.status(503).json({
+        error: 'Your account was created, but the verification email could not be sent. Please contact support.',
+        code: 'VERIFICATION_EMAIL_FAILED',
+      });
+    }
+
+    return res.status(201).json({
+      message: 'Account created. Check your email for a verification link.',
+      user: publicUser(user),
+    });
   } catch (err) {
+    if (client) client.release();
     next(err);
   }
 });
 
+// VERIFY EMAIL
 router.post('/verify-email', async (req, res, next) => {
   let client;
 
@@ -173,6 +267,7 @@ router.post('/verify-email', async (req, res, next) => {
     }
 
     const tokenHash = hashVerificationToken(parsed.data.token);
+
     client = await pool.connect();
 
     try {
@@ -190,6 +285,7 @@ router.post('/verify-email', async (req, res, next) => {
 
       if (!result.rowCount) {
         await client.query('ROLLBACK');
+
         return res.status(400).json({
           error: 'The verification link is invalid, expired, or already used.',
         });
@@ -204,11 +300,12 @@ router.post('/verify-email', async (req, res, next) => {
         [verification.user_id]
       );
 
+      // Invalidate every outstanding verification link for this user.
       await client.query(
         `UPDATE email_verification_tokens
          SET used_at = NOW()
-         WHERE id = $1`,
-        [verification.id]
+         WHERE user_id = $1 AND used_at IS NULL`,
+        [verification.user_id]
       );
 
       await client.query('COMMIT');
@@ -221,12 +318,15 @@ router.post('/verify-email', async (req, res, next) => {
       throw err;
     } finally {
       client.release();
+      client = null;
     }
   } catch (err) {
+    if (client) client.release();
     next(err);
   }
 });
 
+// LOGIN
 router.post('/login', async (req, res, next) => {
   try {
     const parsed = loginSchema.safeParse(req.body);
@@ -249,6 +349,7 @@ router.post('/login', async (req, res, next) => {
     );
 
     const user = result.rows[0];
+
     const passwordMatches = user
       ? await bcrypt.compare(parsed.data.password, user.password_hash)
       : false;
@@ -278,154 +379,33 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-router.post('/forgot-password', async (req, res, next) => {
-  try {
-    const parsed = forgotPasswordSchema.safeParse(req.body);
-
-    if (!parsed.success) {
-      return res.status(400).json({
-        error: 'Enter a valid email address.',
-      });
-    }
-
-    const email = parsed.data.email.toLowerCase();
-
-    const result = await pool.query(
-      `SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1`,
-      [email]
-    );
-
-    // Return the same response whether or not the account exists.
-    const message =
-      'If an account exists for that email, a password reset link will be sent.';
-
-    if (!result.rowCount) {
-      return res.json({ message });
-    }
-
-    const user = result.rows[0];
-    const rawToken = generateVerificationToken();
-    const tokenHash = hashVerificationToken(rawToken);
-
-    await pool.query(
-      `UPDATE password_reset_tokens
-       SET used_at = NOW()
-       WHERE user_id = $1 AND used_at IS NULL`,
-      [user.id]
-    );
-
-    await pool.query(
-      `INSERT INTO password_reset_tokens
-         (user_id, token_hash, expires_at)
-       VALUES ($1, $2, $3)`,
-      [user.id, tokenHash, getVerificationExpiry()]
-    );
-
-    try {
-      await sendPasswordResetEmail({
-        to: user.email,
-        token: rawToken,
-      });
-    
-    } catch (emailError) {
-      console.error(
-        'Password reset email delivery failed:',
-        emailError.message
-      );
-
-      await pool.query(
-        `UPDATE password_reset_tokens
-         SET used_at = NOW()
-         WHERE token_hash = $1 AND used_at IS NULL`,
-        [tokenHash]
-      ).catch((dbError) => {
-        console.error(
-          'Failed to invalidate password reset token:',
-          dbError.message
-        );
-      });
-
-      return res.status(503).json({
-        error: 'Unable to send a password reset email right now. Please try again later.',
-      });
-    }
-
-
-    return res.json({ message });
-  } catch (err) {
-    next(err);
-  }
+// GET CURRENT AUTHENTICATED USER
+router.get('/me', requireAuth, (req, res) => {
+  return res.json({ user: req.user });
 });
 
-router.post('/reset-password', async (req, res, next) => {
-  let client;
+// PASSWORD RESET
+// Intentionally unavailable until password-reset token storage exists.
+router.post('/forgot-password', async (req, res) => {
+  const parsed = emailSchema.safeParse(req.body);
 
-  try {
-    const parsed = resetPasswordSchema.safeParse(req.body);
-
-    if (!parsed.success) {
-      return res.status(400).json({
-        error: 'The reset link is invalid or the new password does not meet the requirements.',
-      });
-    }
-
-    const { token, password } = parsed.data;
-    const tokenHash = hashVerificationToken(token);
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    client = await pool.connect();
-
-    try {
-      await client.query('BEGIN');
-
-      const result = await client.query(
-        `SELECT id, user_id
-         FROM password_reset_tokens
-         WHERE token_hash = $1
-           AND used_at IS NULL
-           AND expires_at > NOW()
-         FOR UPDATE`,
-        [tokenHash]
-      );
-
-      if (!result.rowCount) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({
-          error: 'The reset link is invalid, expired, or already used.',
-        });
-      }
-
-      const reset = result.rows[0];
-
-      await client.query(
-        `UPDATE users
-         SET password_hash = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [passwordHash, reset.user_id]
-      );
-
-      await client.query(
-        `UPDATE password_reset_tokens
-         SET used_at = NOW()
-         WHERE user_id = $1 AND used_at IS NULL`,
-        [reset.user_id]
-      );
-
-      await client.query('COMMIT');
-
-      return res.json({
-        message: 'Password reset successfully. You can now log in with your new password.',
-      });
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    next(err);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Enter a valid email address.',
+    });
   }
+
+  return res.status(501).json({
+    error: 'Password reset is not available yet. Please contact support.',
+    code: 'PASSWORD_RESET_UNAVAILABLE',
+  });
 });
 
+router.post('/reset-password', (req, res) => {
+  return res.status(501).json({
+    error: 'Password reset is not available yet. Please contact support.',
+    code: 'PASSWORD_RESET_UNAVAILABLE',
+  });
+});
 
 module.exports = router;

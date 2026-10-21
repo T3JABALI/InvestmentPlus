@@ -356,6 +356,10 @@ function Sidebar({ type, onClose }) {
 
 function DashboardShell({ type, children }) {
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('investplus_user') || 'null'); } catch { return null; } })();
+  const displayName = String(currentUser?.fullName || '').trim();
+  const userInitials = displayName
+    ? displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join('')
+    : 'ME';
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -367,7 +371,7 @@ function DashboardShell({ type, children }) {
 
     <div className={`sidebar-wrap ${sidebarOpen ? 'sidebar-open' : ''}`}><Sidebar type={type} onClose={() => setSidebarOpen(false)} /></div>
 
-    <div className="dashboard-main"><header className="dash-header"><div className="dash-header-left"><button className="icon-button mobile-sidebar-trigger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={20} /></button><div className="breadcrumb">Workspace <span>/</span> <b>{isAdmin ? 'Administration' : 'Member area'}</b></div></div><div className="dash-header-actions"><button className="icon-button" aria-label="Search"><Search size={18} /></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="profile-chip"><div className="avatar">{isAdmin ? 'AD' : 'JM'}</div><div><b>{isAdmin ? (currentUser?.fullName || 'Administrator') : (currentUser?.fullName || 'Member')}</b><small>{isAdmin ? 'Administrator' : 'Member account'}</small></div><ChevronDown size={15} /></div></div></header><main className="dashboard-content">{children}<footer className="dash-footer"><span>© 2026 InvestPlus · Prototype interface</span><span><ShieldCheck size={14} /> Account activity</span></footer></main></div>
+    <div className="dashboard-main"><header className="dash-header"><div className="dash-header-left"><button className="icon-button mobile-sidebar-trigger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={20} /></button><div className="breadcrumb">Workspace <span>/</span> <b>{isAdmin ? 'Administration' : 'Member area'}</b></div></div><div className="dash-header-actions"><button className="icon-button" aria-label="Search"><Search size={18} /></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="profile-chip"><div className="avatar">{isAdmin ? (userInitials || 'AD') : userInitials}</div><div><b>{displayName || (isAdmin ? 'Administrator' : 'Member')}</b><small>{isAdmin ? 'Administrator' : 'Member account'}</small></div><ChevronDown size={15} /></div></div></header><main className="dashboard-content">{children}<footer className="dash-footer"><span>© 2026 InvestPlus · Prototype interface</span><span><ShieldCheck size={14} /> Account activity</span></footer></main></div>
 
   </div>
 
