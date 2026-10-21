@@ -209,7 +209,11 @@ function LandingPage() {
 
             <div className="package-details"><div><span>Proposed daily payout</span><b>{money(p.daily)}</b></div><div><span>Illustrative duration</span><b>{p.duration} days</b></div><div><span>Illustrative total</span><b>{money(p.daily * p.duration)}</b></div></div>
 
-            <Link to="/register" className={`btn ${i === 4 ? 'btn-primary' : 'btn-package'}`}>View details <ArrowRight size={15} /></Link>
+           <Link to={`/member?package=${encodeURIComponent(p.name)}`}
+                className={`btn ${i === 4 ? 'btn-primary' : 'btn-package'}`}
+           > 
+                View details <ArrowRight size={15} />
+           </Link>
 
           </article>)}</div>
 
@@ -434,6 +438,10 @@ function MemberDashboard() {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loadingFinance, setLoadingFinance] = useState(true);
   const [financeError, setFinanceError] = useState('');
+  const [availablePackages, setAvailablePackages] = useState([]);
+  const [packagesLoading, setPackagesLoading] = useState(true);
+  const [packagesError, setPackagesError] = useState('');
+  const location = useLocation();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -516,6 +524,56 @@ function MemberDashboard() {
 
     return () => controller.abort();
   }, []);
+  useEffect(() => {
+  const controller = new AbortController();
+
+  async function loadAvailablePackages() {
+    const token = localStorage.getItem('investplus_token');
+
+    if (!token) {
+      setPackagesError('Please log in again to view available packages.');
+      setPackagesLoading(false);
+      return;
+    }
+
+    try {
+      setPackagesLoading(true);
+      setPackagesError('');
+
+      const response = await fetch(
+        `${API_BASE}/api/finance/packages`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to load available packages.');
+      }
+
+      setAvailablePackages(
+        Array.isArray(data.packages) ? data.packages : []
+      );
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        setPackagesError(error.message || 'Unable to load packages.');
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setPackagesLoading(false);
+      }
+    }
+  }
+
+  loadAvailablePackages();
+
+  return () => controller.abort();
+}, []);
 
   const balance = overview?.balance ?? null;
 
@@ -524,7 +582,9 @@ function MemberDashboard() {
     overview?.confirmedDeposits ??
     null;
 
-  return (
+  const selectedPackageName =
+  new URLSearchParams(location.search).get('package');
+    return (
   <DashboardShell type="member">
     <PageTitle
       title="Member Dashboard"
@@ -578,6 +638,102 @@ function MemberDashboard() {
         tone="gold"
       />
     </div>
+    
+<section className="panel">
+  <div className="panel-header">
+    <div>
+      <h2>Available Packages</h2>
+      <p>Review the package options configured in the database.</p>
+    </div>
+    <span className="small-icon">
+      <Package size={17} />
+    </span>
+  </div>
+
+  {packagesLoading && <p>Loading available packages…</p>}
+
+  {packagesError && (
+    <div className="notice-strip" role="alert">
+      <AlertCircle size={19} />
+      <div>
+        <b>Unable to load available packages</b>
+        <p>{packagesError}</p>
+      </div>
+    </div>
+  )}
+
+  {!packagesLoading && !packagesError &&
+    availablePackages.length === 0 && (
+      <p>No active packages are currently available.</p>
+    )}
+
+  {!packagesLoading && !packagesError &&
+    availablePackages.length > 0 && (
+      <div className="package-grid">
+        {availablePackages.map((pkg) => {
+          const appearance = {
+            Basic: { tone: 'mint', icon: 'sprout' },
+            Beginner: { tone: 'blue', icon: 'layers' },
+            'Semi Pro': { tone: 'violet', icon: 'settings' },
+            Pro: { tone: 'gold', icon: 'gem' },
+            Premium: { tone: 'orange', icon: 'crown' },
+            Star: { tone: 'pink', icon: 'star' },
+            'World Class': { tone: 'teal', icon: 'globe' },
+          }[pkg.name] || { tone: 'mint', icon: 'sprout' };
+
+          const isSelected =
+            selectedPackageName === pkg.name;
+
+          return (
+            <article
+              key={pkg.subscription_id || pkg.id}
+              className={`package-card ${isSelected ? 'featured' : ''}`}
+              id={`package-${pkg.id}`}
+              style={
+                isSelected
+                  ? { outline: '2px solid #12a66a', outlineOffset: '3px' }
+                  : undefined
+              }
+            >
+              {isSelected && (
+                <div className="popular-tag">SELECTED PACKAGE</div>
+              )}
+
+              <div className={`package-icon ${appearance.tone}`}>
+                <PackageIcon name={appearance.icon} size={22} />
+              </div>
+
+              <h3>{pkg.name}</h3>
+              <p>{pkg.description}</p>
+
+              <div className="package-price">
+                {formatMoney(pkg.price)}
+                <small>Package price</small>
+              </div>
+
+              <div className="package-details">
+                <div>
+                  <span>Configured daily figure</span>
+                  <b>{formatMoney(pkg.daily)}</b>
+                </div>
+                <div>
+                  <span>Duration</span>
+                  <b>{pkg.duration} days</b>
+                </div>
+              </div>
+
+              <p>
+                {isSelected
+                  ? 'This is the package you selected.'
+                  : 'Review the terms before making any commitment.'}
+              </p>
+            </article>
+          );
+        })}
+      </div>
+    )}
+</section>
+
 
     {financeError && (
       <div className="notice-strip" role="alert">
@@ -693,9 +849,9 @@ function PlaceholderPage({ type }) {
 
   const pageConfig = {
     packages: {
-      title: 'My Packages',
-      subtitle: 'View the available packages from the database.',
-    },
+    title: 'My Packages',
+    subtitle: 'View the packages you have actually subscribed to.',
+  },
     earnings: {
       title: 'Earnings Activity',
       subtitle: 'Review recorded referral commissions.',
@@ -735,7 +891,7 @@ function PlaceholderPage({ type }) {
       }
 
       const endpoint = {
-        packages: '/api/finance/packages',
+        packages: '/api/finance/my-packages',
         earnings: '/api/finance/earnings',
         withdrawals: '/api/finance/withdrawals',
         transactions: '/api/finance/transactions',
@@ -892,7 +1048,7 @@ function PlaceholderPage({ type }) {
             };
 
             return (
-              <section className="panel" key={pkg.id}>
+              <section className="panel" key={pkg.subscription_id || pkg.id}>
                 <div className={`package-icon ${appearance.tone}`}>
                   <PackageIcon name={appearance.icon} />
                 </div>
@@ -1085,6 +1241,7 @@ function AuthPage({ mode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const location = useLocation();
 
   async function submit(e) {
     e.preventDefault();
@@ -1103,7 +1260,22 @@ function AuthPage({ mode }) {
         if (!data.token || !data.user) throw new Error('The server response did not include a valid login session.');
         localStorage.setItem('investplus_token', data.token);
         localStorage.setItem('investplus_user', JSON.stringify(data.user));
-        navigate(data.user.role === 'admin' ? '/admin' : '/member', { replace: true });
+        const requested = location.state?.from;
+        const home = data.user.role === 'admin' ? '/admin' : '/member';
+
+        const requestedPath = requested
+           ? `${requested.pathname || ''}${requested.search || ''}${requested.hash || ''}`
+           : '';
+
+        const allowedDestination =
+            data.user.role === 'admin'
+            ? requested?.pathname?.startsWith('/admin')
+            : requested?.pathname?.startsWith('/member');
+
+        navigate(
+            allowedDestination && requestedPath ? requestedPath : home,
+            { replace: true }
+        );
       }
     } catch (err) {
       setError(err.message || 'Could not connect to the server. Please try again.');
@@ -1280,12 +1452,35 @@ function ResetPasswordPage() {
 }
 
 function RequireAuth({ children, admin = false }) {
+  const location = useLocation();
   const token = localStorage.getItem('investplus_token');
+
   let user = null;
-  try { user = JSON.parse(localStorage.getItem('investplus_user') || 'null'); } catch { }
-  if (!token || !user) return <Navigate to="/login" replace />;
-  if (admin && user.role !== 'admin') return <Navigate to="/member" replace />;
-  if (!admin && user.role === 'admin') return <Navigate to="/admin" replace />;
+
+  try {
+    user = JSON.parse(
+      localStorage.getItem('investplus_user') || 'null'
+    );
+  } catch {}
+
+  if (!token || !user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location }}
+      />
+    );
+  }
+
+  if (admin && user.role !== 'admin') {
+    return <Navigate to="/member" replace />;
+  }
+
+  if (!admin && user.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
   return children;
 }
 
