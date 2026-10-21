@@ -22,6 +22,33 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 
 import { packages, transactions, adminTransactions } from './data'
 
+
+const formatMoney = (amount, currency = 'KES') => {
+  if (amount === null || amount === undefined || amount === '') {
+    return 'Not available';
+  }
+
+  const value = Number(amount);
+
+  if (!Number.isFinite(value)) {
+    return 'Not available';
+  }
+
+  return new Intl.NumberFormat('en-KE', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+const EMPTY_FINANCIAL_STATE = {
+  balance: null,
+  invested: null,
+  earnings: null,
+  withdrawable: null,
+};
+
 const money = n => `KSh ${Number(n).toLocaleString('en-KE')}`
 
 const earningsData = [
@@ -389,48 +416,211 @@ function StatCard({ icon: Icon, label, value, change, tone = 'green', note }) {
 
 }
 
+
 function MemberDashboard() {
-  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('investplus_user') || 'null'); } catch { return null; } })();
+  const currentUser = (() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem('investplus_user') || 'null'
+      );
+    } catch {
+      return null;
+    }
+  })();
 
-  const [period, setPeriod] = useState('7 days')
+  const [period, setPeriod] = useState('7 days');
 
-  const [toast, setToast] = useState('')
+  return (
+    <DashboardShell type="member">
+      <PageTitle
+        title={`Welcome back, ${currentUser?.fullName || 'Member'}`}
+        subtitle="Your account overview. Financial figures appear when verified records are available."
+        action={
+          <div className="demo-label">
+            <span /> LIVE DATA NOT CONNECTED
+          </div>
+        }
+      />
 
-  const referralLink = 'https://investplus.example/ref/JOHN123'
+      <div className="stats-grid member-stats">
+        <StatCard
+          icon={Wallet}
+          label="Account balance"
+          value="Not available"
+          note="No verified balance available"
+          tone="green"
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Recorded activity"
+          value="Not available"
+          note="No transaction records available"
+          tone="blue"
+        />
+        <StatCard
+          icon={Users}
+          label="Referral commissions"
+          value="Not available"
+          note="No verified commission records"
+          tone="purple"
+        />
+        <StatCard
+          icon={CreditCard}
+          label="Available to request"
+          value="Not available"
+          note="Requires verified balance records"
+          tone="gold"
+        />
+      </div>
 
-  const copyLink = async () => {
+      <div className="dashboard-two-col member-main-grid">
+        <section className="panel chart-panel">
+          <div className="panel-header">
+            <div>
+              <h2>Account activity</h2>
+              <p>Confirmed deposits and withdrawals only</p>
+            </div>
 
-    try { await navigator.clipboard.writeText(referralLink); setToast('Referral link copied') }
+            <select
+              className="select-control"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+            >
+              <option>7 days</option>
+              <option>30 days</option>
+              <option>90 days</option>
+            </select>
+          </div>
 
-    catch { setToast(referralLink) }
+          <div className="empty-financial-state">
+            <Activity size={28} />
+            <h3>No verified activity yet</h3>
+            <p>
+              Your activity chart will appear when the backend provides
+              verified transaction records for the selected period.
+            </p>
+          </div>
+        </section>
 
-    window.setTimeout(() => setToast(''), 2600)
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2>Referral link</h2>
+              <p>Your personal referral tools</p>
+            </div>
+            <span className="small-icon">
+              <Users size={17} />
+            </span>
+          </div>
 
-  }
+          <div className="empty-financial-state">
+            <Users size={26} />
+            <h3>Referral tracking unavailable</h3>
+            <p>
+              A personal referral link and referral statistics will appear
+              once referral tracking is connected to the backend.
+            </p>
+          </div>
 
-  return <DashboardShell type="member">
+          <div className="referral-stats">
+            <div>
+              <span>Total referrals</span>
+              <b>Not available</b>
+              <small>Awaiting verified records</small>
+            </div>
+            <div>
+              <span>Eligible commissions</span>
+              <b>Not available</b>
+              <small>Awaiting commission records</small>
+            </div>
+          </div>
+        </section>
+      </div>
 
-    <PageTitle title={`Welcome back, ${currentUser?.fullName || "Member"}`} subtitle="Here is a summary of your account activity." action={<div className="demo-label"><span /> DEMO DATA</div>} />
+      <div className="dashboard-two-col lower-grid">
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2>Active packages</h2>
+              <p>Your confirmed investment records</p>
+            </div>
+            <Link
+              to="/member/packages"
+              className="subtle-link"
+            >
+              View all <ArrowRight size={14} />
+            </Link>
+          </div>
 
-    <div className="stats-grid member-stats"><StatCard icon={Wallet} label="Account balance" value="KSh 16,450" note="Sample balance" tone="green" /><StatCard icon={TrendingUp} label="Recorded activity" value="KSh 1,000" note="Illustrative only" tone="blue" /><StatCard icon={Users} label="Referral commissions" value="KSh 450" note="Pending review" tone="purple" /><StatCard icon={CreditCard} label="Available to request" value="KSh 1,450" note="Sample only" tone="gold" /></div>
+          <div className="empty-financial-state">
+            <Package size={28} />
+            <h3>No package records available</h3>
+            <p>
+              Packages will appear here after the backend can retrieve
+              confirmed purchases associated with your account.
+            </p>
+          </div>
 
-    <div className="dashboard-two-col member-main-grid">
+          <div className="panel-bottom-link">
+            <Link to="/member/packages">
+              View package workspace <ArrowRight size={15} />
+            </Link>
+          </div>
+        </section>
 
-      <section className="panel chart-panel"><div className="panel-header"><div><h2>Account activity</h2><p>Illustrative activity history, not investment performance</p></div><select className="select-control" value={period} onChange={e => setPeriod(e.target.value)}><option>7 days</option><option>30 days</option><option>90 days</option></select></div><div className="chart-legend"><span><i className="legend-dot green-dot" /> Recorded activity</span></div><div className="member-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={earningsData}><defs><linearGradient id="memberGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#13a66a" stopOpacity={0.2} /><stop offset="95%" stopColor="#13a66a" stopOpacity={0} /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf1f5" /><XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#8a96a8' }} /><YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#8a96a8' }} tickFormatter={v => `${v}`} width={40} /><Tooltip formatter={v => money(v)} /><Area type="monotone" dataKey="value" stroke="#12a66a" strokeWidth={2.5} fill="url(#memberGradient)" /></AreaChart></ResponsiveContainer></div><div className="chart-note"><AlertCircle size={15} /> Sample chart data for layout preview. Live values will come from the backend.</div></section>
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2>Recent transactions</h2>
+              <p>Your recorded account activity</p>
+            </div>
+            <Link
+              to="/member/transactions"
+              className="subtle-link"
+            >
+              View all <ArrowRight size={14} />
+            </Link>
+          </div>
 
-      <section className="panel"><div className="panel-header"><div><h2>Referral link</h2><p>Share your unique member link</p></div><span className="small-icon"><Users size={17} /></span></div><div className="referral-link-box"><span>{referralLink}</span><button onClick={copyLink} aria-label="Copy referral link"><Copy size={16} /></button></div>{toast && <div className="toast-message"><Check size={14} />{toast}</div>}<div className="referral-stats"><div><span>Total referrals</span><b>12</b><small>Sample count</small></div><div><span>Eligible commissions</span><b>KSh 1,800</b><small>Illustrative</small></div></div><div className="panel-divider" /><div className="referral-callout"><span><Users size={18} /></span><p><b>Invite with transparency</b><small>Make sure anyone you invite understands the product terms and risks.</small></p></div></section>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Transaction</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={3}>
+                    <div className="empty-table-message">
+                      No verified transactions are available yet.
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
 
-    </div>
-
-    <div className="dashboard-two-col lower-grid"><section className="panel"><div className="panel-header"><div><h2>Active packages</h2><p>Your current package overview</p></div><Link to="/member/packages" className="subtle-link">View all <ArrowRight size={14} /></Link></div><div className="active-packages">{[{ name: 'Basic', price: 1000, daily: 70, progress: 70, days: 6, tone: 'mint' }, { name: 'Beginner', price: 3000, daily: 200, progress: 42, days: 12, tone: 'blue' }, { name: 'Premium', price: 15000, daily: 1000, progress: 20, days: 16, tone: 'orange' }].map(p => <div className="active-package" key={p.name}><div className={`package-icon ${p.tone}`}><PackageIcon name={packages.find(x => x.name === p.name)?.icon} /></div><div className="active-package-info"><div className="active-package-title"><b>{p.name}</b><span className="package-demo-tag">Sample</span></div><div className="active-package-meta">{money(p.price)} <span>·</span> Proposed daily figure {money(p.daily)}</div><div className="progress-track"><span style={{ width: `${p.progress}%` }} /></div></div><div className="package-time"><b>{p.days} days</b><small>sample progress</small></div></div>)}</div><div className="panel-bottom-link"><Link to="/member/packages">Explore package details <ArrowRight size={15} /></Link></div></section>
-
-      <section className="panel"><div className="panel-header"><div><h2>Recent transactions</h2><p>Your latest account activity</p></div><Link to="/member/transactions" className="subtle-link">View all <ArrowRight size={14} /></Link></div><div className="table-wrap"><table><thead><tr><th>Transaction</th><th>Amount</th><th>Status</th></tr></thead><tbody>{transactions.slice(0, 4).map((t, i) => <tr key={i}><td><div className="transaction-cell"><span className={`transaction-icon tx-${i}`}><ReceiptText size={15} /></span><div><b>{t.type}</b><small>{t.date}</small></div></div></td><td className={t.amount > 0 ? 'amount-positive' : ''}>{t.amount > 0 ? '+' : ''}{money(t.amount)}</td><td><Status>{t.status}</Status></td></tr>)}</tbody></table></div></section></div>
-
-    <div className="notice-strip"><ShieldCheck size={19} /><div><b>Prototype notice</b><p>All balances, packages, commissions, and transactions shown here are sample interface data. They are not connected to a payment provider or investment account.</p></div></div>
-
-  </DashboardShell>
-
+      <div className="notice-strip">
+        <ShieldCheck size={19} />
+        <div>
+          <b>Financial records are not connected yet</b>
+          <p>
+            This dashboard does not currently retrieve balances, deposits,
+            withdrawals, investment records, or commissions from the
+            database. No financial amount displayed here should be treated
+            as an actual balance or proof of payment.
+          </p>
+        </div>
+      </div>
+    </DashboardShell>
+  );
 }
+
 
 function AdminDashboard() {
 
