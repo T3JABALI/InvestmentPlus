@@ -876,9 +876,10 @@ function PlaceholderPage({ type }) {
   const [total, setTotal] = useState('0.00');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [referralInfo, setReferralInfo] = useState(null);
 
   useEffect(() => {
-    if (isAdmin || !config || last === 'referrals') return;
+    if (isAdmin || !config) return;
 
     const controller = new AbortController();
 
@@ -895,8 +896,8 @@ function PlaceholderPage({ type }) {
         earnings: '/api/finance/earnings',
         withdrawals: '/api/finance/withdrawals',
         transactions: '/api/finance/transactions',
+        referrals: '/api/finance/referrals',
       }[last];
-
       if (!endpoint) return;
 
       setLoading(true);
@@ -920,20 +921,26 @@ function PlaceholderPage({ type }) {
           throw new Error(data.error || 'Unable to load this page.');
         }
 
-        let result = [];
+        if (last === 'referrals') {
+  setReferralInfo(data);
+  setRows([]);
+  return;
+}
 
-        if (last === 'packages') {
-          result = data.packages || [];
-        } else if (last === 'earnings') {
-          result = data.earnings || [];
-          setTotal(data.total ?? '0.00');
-        } else if (last === 'withdrawals') {
-          result = data.withdrawals || [];
-        } else if (last === 'transactions') {
-          result = data.transactions || [];
-        }
+  let result = [];
 
-        setRows(Array.isArray(result) ? result : []);
+  if (last === 'packages') {
+    result = data.packages || [];
+  } else if (last === 'earnings') {
+    result = data.earnings || [];
+    setTotal(data.total ?? '0.00');
+  } else if (last === 'withdrawals') {
+    result = data.withdrawals || [];
+  } else if (last === 'transactions') {
+    result = data.transactions || [];
+  }
+
+  setRows(Array.isArray(result) ? result : []);
       } catch (err) {
         if (err.name !== 'AbortError') {
           setError(err.message || 'Unable to load account data.');
@@ -1201,26 +1208,108 @@ function PlaceholderPage({ type }) {
       )}
 
       {!loading && !error && last === 'referrals' && (
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Your referrals</h2>
-              <p>Referral information from your account.</p>
-            </div>
+  <>
+    <div className="stats-grid member-stats">
+      <StatCard
+        icon={Users}
+        label="Total referrals"
+        value={referralInfo?.totalReferrals ?? '—'}
+        note="Members linked to your referral code"
+        tone="green"
+      />
+
+      <StatCard
+        icon={BadgeCheck}
+        label="Verified referrals"
+        value={referralInfo?.verifiedReferrals ?? '—'}
+        note="Members with verified email addresses"
+        tone="blue"
+      />
+
+      <StatCard
+        icon={HandCoins}
+        label="Referral commissions"
+        value={
+          referralInfo?.commissionStatus === 'not_implemented'
+            ? 'Not available'
+            : '—'
+        }
+        note="Commission tracking is not implemented"
+        tone="gold"
+      />
+    </div>
+
+    <section className="panel">
+      <div className="panel-header">
+        <div>
+          <h2>Your referral link</h2>
+          <p>Share your personal link to track new registrations.</p>
+        </div>
+        <span className="small-icon">
+          <Users size={17} />
+        </span>
+      </div>
+
+      {!referralInfo?.referralCode ? (
+        <p>
+          Your referral code is not available yet. Please contact
+          support if this continues.
+        </p>
+      ) : (
+        <>
+          <p>
+            <b>Referral code:</b>{' '}
+            {referralInfo.referralCode}
+          </p>
+
+          <div style={{
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <input
+              aria-label="Your referral link"
+              readOnly
+              value={referralInfo.referralLink || ''}
+              style={{
+                flex: '1 1 280px',
+                minWidth: 0,
+                padding: '12px',
+                border: '1px solid #d7e0e9',
+                borderRadius: 10,
+                font: 'inherit'
+              }}
+            />
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!referralInfo.referralLink}
+              onClick={() => {
+                navigator.clipboard.writeText(
+                  referralInfo.referralLink
+                ).catch(() => {
+                  window.prompt(
+                    'Copy your referral link:',
+                    referralInfo.referralLink
+                  );
+                });
+              }}
+            >
+              <Copy size={16} /> Copy link
+            </button>
           </div>
-          <div className="notice-strip">
-            <AlertCircle size={19} />
-            <div>
-              <b>Referral tracking is not connected yet</b>
-              <p>
-                Your current database schema does not define referral
-                relationships or a referral endpoint. No referral counts
-                or commissions will be fabricated.
-              </p>
-            </div>
-          </div>
-        </section>
+        </>
       )}
+
+      <p style={{ marginTop: 16 }}>
+        Commission amounts will only be shown once eligible purchases
+        and payments can be verified by the backend.
+      </p>
+    </section>
+  </>
+)}
     </DashboardShell>
   );
 }
