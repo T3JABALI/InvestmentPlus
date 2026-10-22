@@ -1308,8 +1308,127 @@ function PlaceholderPage({ type }) {
         and payments can be verified by the backend.
       </p>
     </section>
-  </>
+    
+<section className="panel">
+  <div className="panel-header">
+    <div>
+      <h2>Referral history</h2>
+      <p>People who registered using your referral link.</p>
+    </div>
+  </div>
+
+  {!referralInfo?.referrals?.length ? (
+    <div className="notice-strip">
+      <Users size={19} />
+      <div>
+        <b>No referrals yet</b>
+        <p>
+          When someone registers using your referral link,
+          their details will appear here.
+        </p>
+      </div>
+    </div>
+  ) : (
+    <div style={{ overflowX: 'auto', width: '100%' }}>
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          textAlign: 'left',
+          minWidth: 720,
+        }}
+      >
+        <thead>
+          <tr>
+            {[
+              'Member',
+              'Date joined',
+              'Email verification',
+              'Package',
+              'Package status',
+            ].map((heading) => (
+              <th
+                key={heading}
+                style={{
+                  padding: '14px 12px',
+                  borderBottom: '1px solid #e5eaf0',
+                  color: '#718096',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {heading}
+              </th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {referralInfo.referrals.map((person) => (
+            <tr key={person.id}>
+              <td
+                style={{
+                  padding: '15px 12px',
+                  borderBottom: '1px solid #edf0f4',
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>
+                  {person.fullName || 'Unnamed member'}
+                </div>
+                <div style={{ color: '#718096', fontSize: 13 }}>
+                  {person.email}
+                </div>
+              </td>
+
+              <td
+                style={{
+                  padding: '15px 12px',
+                  borderBottom: '1px solid #edf0f4',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {person.joinedAt
+                  ? new Date(person.joinedAt).toLocaleDateString()
+                  : '—'}
+              </td>
+
+              <td
+                style={{
+                  padding: '15px 12px',
+                  borderBottom: '1px solid #edf0f4',
+                }}
+              >
+                {person.emailVerified ? 'Verified' : 'Not verified'}
+              </td>
+
+              <td
+                style={{
+                  padding: '15px 12px',
+                  borderBottom: '1px solid #edf0f4',
+                }}
+              >
+                {person.packageName || 'No package yet'}
+              </td>
+
+              <td
+                style={{
+                  padding: '15px 12px',
+                  borderBottom: '1px solid #edf0f4',
+                }}
+              >
+                {person.packageStatus || 'No package'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
+</>
 )}
+
+  
     </DashboardShell>
   );
 }
