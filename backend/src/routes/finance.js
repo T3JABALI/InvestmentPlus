@@ -257,5 +257,58 @@ router.get('/my-packages', requireAuth, async (req, res) => {
 });
 
 
+router.get('/referrals', requireAuth, async (req, res) => {
+  try {
+    const memberResult = await pool.query(
+      `SELECT referral_code
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [req.user.id]
+    );
+
+    if (!memberResult.rowCount) {
+      return res.status(404).json({
+        error: 'Member account not found.',
+      });
+    }
+
+    const referralCode = memberResult.rows[0].referral_code;
+
+    const statsResult = await pool.query(
+      `SELECT
+         COUNT(*)::int AS total_referrals,
+         COUNT(*) FILTER (
+           WHERE email_verified = TRUE
+         )::int AS verified_referrals
+       FROM users
+       WHERE referred_by = $1`,
+      [req.user.id]
+    );
+
+    const frontendUrl = (
+      process.env.FRONTEND_URL || 'https://investmentplus.vercel.app'
+    ).replace(/\/+$/, '');
+
+    return res.json({
+      referralCode,
+      referralLink: referralCode
+        ? `${frontendUrl}/register?ref=${encodeURIComponent(referralCode)}`
+        : null,
+      totalReferrals: statsResult.rows[0].total_referrals,
+      verifiedReferrals: statsResult.rows[0].verified_referrals,
+      commissions: null,
+      commissionStatus: 'not_implemented',
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('Referral dashboard error:', error);
+
+    return res.status(500).json({
+      error: 'Unable to load referral information.',
+    });
+  }
+});
+
 
 module.exports = router;

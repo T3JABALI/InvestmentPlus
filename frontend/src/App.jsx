@@ -1242,6 +1242,7 @@ function AuthPage({ mode }) {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const location = useLocation();
+  const referralCode = new URLSearchParams(location.search).get('ref')?.trim().toUpperCase() || '';
 
   async function submit(e) {
     e.preventDefault();
@@ -1250,7 +1251,16 @@ function AuthPage({ mode }) {
       const response = await fetch(`${API_BASE}/api/auth/${isRegister ? 'register' : 'login'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isRegister ? { fullName, email, password } : { email, password })
+        body: JSON.stringify(
+         isRegister
+          ? {
+             fullName,
+             email,
+             password,
+             ...(referralCode ? { referralCode } : {}),
+           }
+          : { email, password }
+     )
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Unable to complete your request.');
