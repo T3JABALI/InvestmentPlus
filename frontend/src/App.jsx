@@ -1268,19 +1268,6 @@ const handleWithdrawalSubmit = (event) => {
       </div>
 
       
-  <p>
-    Package purchase money is not withdrawable. Your wallet
-    starts at KES 0 after subscribing, and only verified
-    earnings can become available for withdrawal.
-  </p>
-
-  <p>
-    Your first withdrawal becomes eligible on the 7th day
-    after subscribing to a package. After your first
-    withdrawal, you must have at least 5 active referrals
-    with packages to qualify for subsequent withdrawals.
-  </p>
-
       
       <button
         type="button"

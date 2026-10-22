@@ -21,3 +21,4 @@ export const adminTransactions = [
   { date: '14 Oct 2026', user: 'Peter N.', type: 'Package purchase', amount: 6000, status: 'Completed' },
   { date: '14 Oct 2026', user: 'Faith K.', type: 'Withdrawal', amount: 1200, status: 'Pending review' },
 ]
+
