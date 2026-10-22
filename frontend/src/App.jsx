@@ -1192,203 +1192,253 @@ const handleWithdrawalSubmit = (event) => {
         </>
       )}
 
-      {!loading && !error && last === 'withdrawals' && (
-        <section className="panel">
-          
-  <section className="panel">
-    <div className="panel-header">
-      <div>
-        <h2>My Wallet</h2>
-        <p>Your available balance for withdrawals.</p>
-      </div>
-    </div>
+      ```jsx
+{!loading && !error && last === 'withdrawals' && (
+  <section className="panel ip-wallet-panel">
 
-    <div>
-      <h3>
-        {walletBalance === null
-          ? 'Balance unavailable'
-          : formatMoney(walletBalance, 'KES')}
-      </h3>
-      <p>
+    {/* Wallet Card */}
+    <div className="ip-wallet-card">
+      <div className="ip-wallet-top">
+        <div>
+          <span className="ip-wallet-eyebrow">
+            INVESTPLUS WALLET
+          </span>
+          <h2>My Wallet</h2>
+          <p>Your available balance for withdrawals.</p>
+        </div>
+
+        <div className="ip-wallet-icon">↗</div>
+      </div>
+
+      <div className="ip-wallet-balance">
+        <span>Available balance</span>
+        <h3>
+          {walletBalance === null
+            ? 'Balance unavailable'
+            : formatMoney(walletBalance, 'KES')}
+        </h3>
+        <span className="ip-wallet-currency">
+          KES · Withdrawable funds
+        </span>
+      </div>
+
+      <div className="ip-wallet-divider" />
+
+      <p className="ip-wallet-note">
         Your package purchase amount is not part of your
         withdrawable balance.
       </p>
-    </div>
-
-    
-  <button
-    type="button"
-    onClick={() => {
-      setError('');
-      setShowWithdrawalForm((current) => !current);
-    }}
-    disabled={walletBalance === null}
-  >
-    Request Withdrawal
-  </button>
-  
-  
-    
-{showWithdrawalForm && (
-  <div className="ip-withdraw-form">
-    <div className="ip-withdraw-title">
-      <div className="ip-withdraw-icon">↗</div>
-      <div>
-        <h3>Request a withdrawal</h3>
-        <p>Withdraw your available funds to your M-Pesa account.</p>
-      </div>
-    </div>
-
-    <div className="ip-withdraw-balance">
-      <span>Available wallet balance</span>
-      <strong>
-        {walletBalance === null
-          ? 'Balance unavailable'
-          : formatMoney(walletBalance, 'KES')}
-      </strong>
-      <small>InvestPlus wallet · KES</small>
-    </div>
-
-    <form
-      className="ip-withdraw-fields"
-      onSubmit={handleWithdrawalSubmit}
-    >
-      <div className="ip-withdraw-field">
-        <label htmlFor="withdrawal-amount">
-          Amount to withdraw
-        </label>
-
-        <div className="ip-withdraw-input">
-          <span>KES</span>
-          <input
-            id="withdrawal-amount"
-            type="number"
-            min="1"
-            step="0.01"
-            value={withdrawalAmount}
-            onChange={(event) =>
-              setWithdrawalAmount(event.target.value)
-            }
-            placeholder="Enter amount"
-            required
-          />
-        </div>
-        <small>Enter an amount within your available balance.</small>
-      </div>
-
-      <div className="ip-withdraw-field">
-        <label htmlFor="withdrawal-phone">
-          M-Pesa phone number
-        </label>
-
-        <div className="ip-withdraw-input">
-          <span className="ip-phone-prefix">☎</span>
-          <input
-            id="withdrawal-phone"
-            type="tel"
-            value={withdrawalPhone}
-            onChange={(event) =>
-              setWithdrawalPhone(event.target.value)
-            }
-            placeholder="0712345678"
-            autoComplete="tel"
-            required
-          />
-        </div>
-        <small>
-          Use a Kenyan mobile number that can receive M-Pesa payments.
-        </small>
-      </div>
-
-      <div className="ip-withdraw-summary">
-        <div>
-          <span>Withdrawal amount</span>
-          <strong>
-            {withdrawalAmount !== '' &&
-            Number.isFinite(Number(withdrawalAmount)) &&
-            Number(withdrawalAmount) > 0
-              ? formatMoney(Number(withdrawalAmount), 'KES')
-              : 'KES 0.00'}
-          </strong>
-        </div>
-
-        <div>
-          <span>Transaction fee</span>
-          <strong>To be confirmed</strong>
-        </div>
-
-        <div className="ip-withdraw-net">
-          <span>Estimated amount received</span>
-          <strong>Confirmed after fee calculation</strong>
-        </div>
-      </div>
-
-      {error && (
-        <div className="ip-withdraw-message" role="alert">
-          {error}
-        </div>
-      )}
 
       <button
-        type="submit"
-        className="btn btn-primary ip-withdraw-submit"
-        disabled={
-          walletBalance === null ||
-          !withdrawalAmount ||
-          Number(withdrawalAmount) <= 0 ||
-          Number(withdrawalAmount) > Number(walletBalance) ||
-          !withdrawalPhone.trim()
-        }
+        type="button"
+        className="btn btn-primary ip-wallet-button"
+        onClick={() => {
+          setError('');
+          setShowWithdrawalForm((current) => !current);
+        }}
+        disabled={walletBalance === null}
       >
-        Continue withdrawal <span>→</span>
+        {showWithdrawalForm
+          ? 'Close Withdrawal Form'
+          : 'Request Withdrawal'}
+        <span>
+          {showWithdrawalForm ? '−' : '→'}
+        </span>
       </button>
 
-      <p className="ip-withdraw-note">
-        Please verify your details before continuing. Withdrawal
-        requests are not submitted until secure processing is enabled.
-      </p>
-    </form>
-  </div>
-)}
-
-
-
-  </section>
-
-          <div className="panel-header">
+      {/* Withdrawal Form */}
+      {showWithdrawalForm && (
+        <div className="ip-withdraw-form">
+          <div className="ip-withdraw-title">
+            <div className="ip-withdraw-icon">↗</div>
             <div>
-              <h2>Withdrawal history</h2>
-              <p>Your submitted withdrawal requests and their statuses.</p>
+              <h3>Request a withdrawal</h3>
+              <p>
+                Withdraw your available funds to your M-Pesa account.
+              </p>
             </div>
           </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Fee</th>
-                  <th>Destination</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr><td colSpan={5}>{emptyMessage}</td></tr>
-                ) : rows.map((item) => (
-                  <tr key={item.id}>
-                    <td>{dateLabel(item.created_at)}</td>
-                    <td>{formatMoney(item.amount, item.currency || 'KES')}</td>
-                    <td>{formatMoney(item.fee, item.currency || 'KES')}</td>
-                    <td>{item.destination_phone}</td>
-                    <td><Status>{statusLabel(item.status)}</Status></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          <div className="ip-withdraw-balance">
+            <span>Available wallet balance</span>
+            <strong>
+              {walletBalance === null
+                ? 'Balance unavailable'
+                : formatMoney(walletBalance, 'KES')}
+            </strong>
+            <small>InvestPlus wallet · KES</small>
           </div>
-        </section>
+
+          <form
+            className="ip-withdraw-fields"
+            onSubmit={handleWithdrawalSubmit}
+          >
+            <div className="ip-withdraw-field">
+              <label htmlFor="withdrawal-amount">
+                Amount to withdraw
+              </label>
+
+              <div className="ip-withdraw-input">
+                <span>KES</span>
+                <input
+                  id="withdrawal-amount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={withdrawalAmount}
+                  onChange={(event) =>
+                    setWithdrawalAmount(event.target.value)
+                  }
+                  placeholder="Enter amount"
+                  required
+                />
+              </div>
+
+              <small>
+                Enter an amount within your available balance.
+              </small>
+            </div>
+
+            <div className="ip-withdraw-field">
+              <label htmlFor="withdrawal-phone">
+                M-Pesa phone number
+              </label>
+
+              <div className="ip-withdraw-input">
+                <span className="ip-phone-prefix">☎</span>
+                <input
+                  id="withdrawal-phone"
+                  type="tel"
+                  value={withdrawalPhone}
+                  onChange={(event) =>
+                    setWithdrawalPhone(event.target.value)
+                  }
+                  placeholder="0712345678"
+                  autoComplete="tel"
+                  required
+                />
+              </div>
+
+              <small>
+                Use a Kenyan mobile number that can receive M-Pesa
+                payments.
+              </small>
+            </div>
+
+            <div className="ip-withdraw-summary">
+              <div>
+                <span>Withdrawal amount</span>
+                <strong>
+                  {withdrawalAmount !== '' &&
+                  Number.isFinite(Number(withdrawalAmount)) &&
+                  Number(withdrawalAmount) > 0
+                    ? formatMoney(
+                        Number(withdrawalAmount),
+                        'KES'
+                      )
+                    : 'KES 0.00'}
+                </strong>
+              </div>
+
+              <div>
+                <span>Transaction fee</span>
+                <strong>To be confirmed</strong>
+              </div>
+
+              <div className="ip-withdraw-net">
+                <span>Estimated amount received</span>
+                <strong>
+                  Confirmed after fee calculation
+                </strong>
+              </div>
+            </div>
+
+            {error && (
+              <div
+                className="ip-withdraw-message"
+                role="alert"
+              >
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primary ip-withdraw-submit"
+              disabled={
+                walletBalance === null ||
+                !withdrawalAmount ||
+                !Number.isFinite(Number(withdrawalAmount)) ||
+                Number(withdrawalAmount) <= 0 ||
+                Number(withdrawalAmount) > Number(walletBalance) ||
+                !withdrawalPhone.trim()
+              }
+            >
+              Continue withdrawal <span>→</span>
+            </button>
+
+            <p className="ip-withdraw-note">
+              Please verify your details before continuing.
+              Withdrawal requests are not submitted until secure
+              processing is enabled.
+            </p>
+          </form>
+        </div>
       )}
+    </div>
+
+    {/* Withdrawal History */}
+    <div className="panel-header">
+      <div>
+        <h2>Withdrawal history</h2>
+        <p>
+          Your submitted withdrawal requests and their statuses.
+        </p>
+      </div>
+    </div>
+
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Fee</th>
+            <th>Destination</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5}>{emptyMessage}</td>
+            </tr>
+          ) : (
+            rows.map((item) => (
+              <tr key={item.id}>
+                <td>{dateLabel(item.created_at)}</td>
+                <td>
+                  {formatMoney(item.amount, item.currency || 'KES')}
+                </td>
+                <td>
+                  {formatMoney(item.fee, item.currency || 'KES')}
+                </td>
+                <td>{item.destination_phone}</td>
+                <td>
+                  <Status>{statusLabel(item.status)}</Status>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+)}
+```
+
 
       {!loading && !error && last === 'transactions' && (
         <section className="panel">

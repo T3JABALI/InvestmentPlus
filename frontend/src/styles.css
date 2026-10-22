@@ -309,3 +309,156 @@
     padding: 14px;
   }
 }
+
+
+/* InvestPlus Wallet Card */
+.ip-wallet-panel {
+  padding: 0;
+  margin-bottom: 28px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ip-wallet-card {
+  position: relative;
+  overflow: hidden;
+  padding: 30px;
+  border-radius: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #071a2c, #0b3048 65%, #0b453e);
+  box-shadow: 0 12px 30px rgba(7, 26, 44, 0.16);
+}
+
+.ip-wallet-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ip-wallet-eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  color: #52e0a5;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.ip-wallet-top h2 {
+  margin: 0 0 7px;
+  color: #fff;
+  font: 700 24px Manrope, sans-serif;
+}
+
+.ip-wallet-top p {
+  margin: 0;
+  color: #c1d0dc;
+  font-size: 14px;
+}
+
+.ip-wallet-icon {
+  display: grid;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(82, 224, 165, 0.3);
+  border-radius: 15px;
+  background: rgba(22, 185, 120, 0.16);
+  color: #52e0a5;
+  font-size: 27px;
+}
+
+.ip-wallet-balance {
+  margin-top: 34px;
+}
+
+.ip-wallet-balance > span:first-child {
+  color: #c1d0dc;
+  font-size: 13px;
+}
+
+.ip-wallet-balance h3 {
+  margin: 10px 0;
+  color: #fff;
+  font: 800 clamp(28px, 4vw, 40px) Manrope, sans-serif;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.ip-wallet-currency {
+  color: #52e0a5;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ip-wallet-divider {
+  height: 1px;
+  margin: 24px 0 18px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.ip-wallet-note {
+  margin: 0 0 24px;
+  color: #c1d0dc;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ip-wallet-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  min-height: 48px;
+  padding: 13px 20px;
+  border: none;
+  border-radius: 12px;
+  background: #16b978;
+  color: #071a2c;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.ip-wallet-button:hover:not(:disabled) {
+  background: #36d795;
+}
+
+.ip-wallet-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ip-wallet-button span {
+  font-size: 20px;
+}
+
+@media (max-width: 600px) {
+  .ip-wallet-card {
+    padding: 21px;
+    border-radius: 16px;
+  }
+
+  .ip-wallet-top h2 {
+    font-size: 21px;
+  }
+
+  .ip-wallet-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .ip-wallet-balance {
+    margin-top: 28px;
+  }
+
+  .ip-wallet-button {
+    max-width: none;
+  }
+}
+
