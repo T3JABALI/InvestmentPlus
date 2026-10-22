@@ -1192,7 +1192,7 @@ const handleWithdrawalSubmit = (event) => {
         </>
       )}
 
-      ```jsx
+      
 {!loading && !error && last === 'withdrawals' && (
   <section className="panel ip-wallet-panel">
 
