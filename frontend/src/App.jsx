@@ -217,7 +217,6 @@ function LandingPage() {
 
           </article>)}</div>
 
-          <div className="disclosure"><AlertCircle size={18} /><p><b>Important:</b> These figures reflect proposed package terms supplied for this design prototype. They are not verified or guaranteed investment returns. Real-money purchases and payout claims should only be enabled after the investment model, cash flows, and applicable regulatory requirements have been validated.</p></div>
 
         </div>
 
@@ -373,7 +372,7 @@ function Sidebar({ type, onClose }) {
 
           <LogOut size={17} />
 
-          Back to website
+          Back to Home Page
 
         </Link>
 
@@ -402,7 +401,7 @@ function DashboardShell({ type, children }) {
 
     <div className={`sidebar-wrap ${sidebarOpen ? 'sidebar-open' : ''}`}><Sidebar type={type} onClose={() => setSidebarOpen(false)} /></div>
 
-    <div className="dashboard-main"><header className="dash-header"><div className="dash-header-left"><button className="icon-button mobile-sidebar-trigger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={20} /></button><div className="breadcrumb">Workspace <span>/</span> <b>{isAdmin ? 'Administration' : 'Member area'}</b></div></div><div className="dash-header-actions"><button className="icon-button" aria-label="Search"><Search size={18} /></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="profile-chip"><div className="avatar">{isAdmin ? (userInitials || 'AD') : userInitials}</div><div><b>{displayName || (isAdmin ? 'Administrator' : 'Member')}</b><small>{isAdmin ? 'Administrator' : 'Member account'}</small></div><ChevronDown size={15} /></div></div></header><main className="dashboard-content">{children}<footer className="dash-footer"><span>© 2026 InvestPlus · Prototype interface</span><span><ShieldCheck size={14} /> Account activity</span></footer></main></div>
+    <div className="dashboard-main"><header className="dash-header"><div className="dash-header-left"><button className="icon-button mobile-sidebar-trigger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={20} /></button><div className="breadcrumb">Workspace <span>/</span> <b>{isAdmin ? 'Administration' : 'Member area'}</b></div></div><div className="dash-header-actions"><button className="icon-button" aria-label="Search"><Search size={18} /></button><button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><i /></button><div className="profile-chip"><div className="avatar">{isAdmin ? (userInitials || 'AD') : userInitials}</div><div><b>{displayName || (isAdmin ? 'Administrator' : 'Member')}</b><small>{isAdmin ? 'Administrator' : 'Member account'}</small></div><ChevronDown size={15} /></div></div></header><main className="dashboard-content">{children}<footer className="dash-footer"><span>© 2026 InvestPlus · </span><span><ShieldCheck size={14} /> Account activity</span></footer></main></div>
 
   </div>
 
@@ -1716,6 +1715,9 @@ function AuthPage({ mode }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -1724,7 +1726,16 @@ function AuthPage({ mode }) {
 
   async function submit(e) {
     e.preventDefault();
-    setBusy(true); setError(''); setMessage('');
+    setError('');
+    setMessage('');
+
+    if (isRegister && password !== confirmPassword) {
+     setError('Passwords do not match. Please check both fields.');
+     return;
+   }
+
+setBusy(true);
+    
     try {
       const response = await fetch(`${API_BASE}/api/auth/${isRegister ? 'register' : 'login'}`, {
         method: 'POST',
@@ -1779,7 +1790,62 @@ function AuthPage({ mode }) {
       <form onSubmit={submit} className="auth-form" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 16, width: '100%', maxWidth: 560, margin: '24px auto' }}>
         {isRegister && <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>Full name<input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} required minLength={2} maxLength={120} /></label>}
         <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>Email address<input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={254} /></label>
-        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>Password<input style={{ display: 'block', width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }} type="password" autoComplete={isRegister ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={isRegister ? 8 : 1} maxLength={72} /></label>
+        
+<label style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>
+  Password
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+    <input
+      style={{ display: 'block', flex: 1, minWidth: 0, boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }}
+      type={showPassword ? 'text' : 'password'}
+      autoComplete={isRegister ? 'new-password' : 'current-password'}
+      value={password}
+      onChange={e => setPassword(e.target.value)}
+      required
+      minLength={isRegister ? 8 : 1}
+      maxLength={72}
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword(current => !current)}
+      style={{ minHeight: 44, padding: '8px 12px', border: '1px solid #d7e0e9', borderRadius: 10, background: '#fff', cursor: 'pointer', font: 'inherit' }}
+    >
+      {showPassword ? 'Hide' : 'Show'}
+    </button>
+  </div>
+</label>
+       
+{isRegister && (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, width: '100%', textAlign: 'left' }}>
+    <label htmlFor="auth-confirm-password">Confirm password</label>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+      <input
+        id="auth-confirm-password"
+        style={{ display: 'block', flex: 1, minWidth: 0, boxSizing: 'border-box', minHeight: 52, padding: '12px 14px', border: '1px solid #d7e0e9', borderRadius: 10, font: 'inherit' }}
+        type={showConfirmPassword ? 'text' : 'password'}
+        autoComplete="new-password"
+        value={confirmPassword}
+        onChange={e => setConfirmPassword(e.target.value)}
+        required
+        maxLength={72}
+      />
+      <button
+        type="button"
+        onClick={() => setShowConfirmPassword(current => !current)}
+        aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+        style={{ minHeight: 44, padding: '8px 12px', border: '1px solid #d7e0e9', borderRadius: 10, background: '#fff', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}
+      >
+        {showConfirmPassword ? 'Hide' : 'Show'}
+      </button>
+    </div>
+    {confirmPassword && password !== confirmPassword && (
+      <small style={{ color: '#c62828' }} role="alert">
+        Passwords do not match.
+      </small>
+    )}
+  </div>
+)}
+
+
         {isRegister && <small style={{ display: 'block', textAlign: 'left', lineHeight: 1.5 }}>Use at least 8 characters, including uppercase, lowercase, and a special character.</small>}
         {error && <p role="alert" className="auth-error">{error}</p>}
         {message && <p role="status" className="auth-message">{message}</p>}
