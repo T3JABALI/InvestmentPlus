@@ -286,8 +286,43 @@ router.get('/referrals', requireAuth, async (req, res) => {
       [req.user.id]
     );
 
+    const referralsResult = await pool.query(
+      `SELECT
+         u.id,
+         u.full_name AS "fullName",
+         u.email,
+         u.email_verified AS "emailVerified",
+         u.created_at AS "joinedAt",
+         latest.package_name AS "packageName",
+         latest.package_status AS "packageStatus",
+         latest.purchase_amount AS "purchaseAmount",
+         latest.started_at AS "packageStartedAt",
+         latest.expires_at AS "packageExpiresAt"
+       FROM users u
+       LEFT JOIN LATERAL (
+         SELECT
+           ip.name AS package_name,
+           up.status AS package_status,
+           up.purchase_amount,
+           up.started_at,
+           up.expires_at
+         FROM user_packages up
+         LEFT JOIN investment_packages ip
+           ON ip.id = up.package_id
+         WHERE up.user_id = u.id
+         ORDER BY
+           COALESCE(up.updated_at, up.created_at) DESC,
+           up.id DESC
+         LIMIT 1
+       ) latest ON TRUE
+       WHERE u.referred_by = $1
+       ORDER BY u.created_at DESC`,
+      [req.user.id]
+    );
+
     const frontendUrl = (
-      process.env.FRONTEND_URL || 'https://investmentplus.vercel.app'
+      process.env.FRONTEND_URL ||
+      'https://investmentplus.vercel.app'
     ).replace(/\/+$/, '');
 
     return res.json({
@@ -297,6 +332,7 @@ router.get('/referrals', requireAuth, async (req, res) => {
         : null,
       totalReferrals: statsResult.rows[0].total_referrals,
       verifiedReferrals: statsResult.rows[0].verified_referrals,
+      referrals: referralsResult.rows,
       commissions: null,
       commissionStatus: 'not_implemented',
       source: 'database',
