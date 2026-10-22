@@ -73,3 +73,239 @@
   color: #7b8797;
   font-size: 13px;
 }
+
+/* InvestPlus withdrawal form */
+.ip-withdraw-form {
+  margin-top: 22px;
+  padding: 26px;
+  border: 1px solid #e5eaf0;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 26px rgba(7, 26, 44, 0.06);
+  color: #071a2c;
+}
+
+.ip-withdraw-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.ip-withdraw-icon {
+  display: grid;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: #e9f9f1;
+  color: #07965d;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.ip-withdraw-title h3 {
+  margin: 0 0 6px;
+  color: #071a2c;
+  font-size: 19px;
+  font-weight: 750;
+}
+
+.ip-withdraw-title p {
+  margin: 0;
+  color: #718096;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ip-withdraw-balance {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 25px;
+  padding: 23px;
+  border-radius: 15px;
+  background: linear-gradient(120deg, #071a2c, #0b243b);
+  color: #d4e1eb;
+}
+
+.ip-withdraw-balance > span {
+  font-size: 13px;
+}
+
+.ip-withdraw-balance strong {
+  color: #ffffff;
+  font-size: clamp(25px, 4vw, 34px);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.ip-withdraw-balance small {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  color: #c1d0dd;
+  font-size: 12px;
+}
+
+.ip-withdraw-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 21px;
+}
+
+.ip-withdraw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ip-withdraw-field label {
+  color: #0b243b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ip-withdraw-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid #d7e0e9;
+  border-radius: 11px;
+  background: #ffffff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ip-withdraw-input:focus-within {
+  border-color: #16b978;
+  box-shadow: 0 0 0 3px rgba(22, 185, 120, 0.11);
+}
+
+.ip-withdraw-input > span {
+  flex-shrink: 0;
+  color: #07965d;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ip-withdraw-input input {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #071a2c;
+  font: inherit;
+  font-size: 14px;
+}
+
+.ip-withdraw-input input::placeholder {
+  color: #a0acb9;
+}
+
+.ip-withdraw-field > small {
+  color: #718096;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ip-withdraw-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 18px;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #f7f9fb;
+}
+
+.ip-withdraw-summary > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  color: #718096;
+  font-size: 13px;
+}
+
+.ip-withdraw-summary strong {
+  max-width: 60%;
+  color: #0b243b;
+  font-size: 13px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.ip-withdraw-summary .ip-withdraw-net {
+  padding-top: 14px;
+  border-top: 1px solid #e0e7ed;
+  color: #071a2c;
+  font-weight: 700;
+}
+
+.ip-withdraw-net strong {
+  color: #07965d;
+}
+
+.ip-withdraw-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 50px;
+  border-radius: 11px;
+  font-weight: 700;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.ip-withdraw-submit:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.ip-withdraw-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ip-withdraw-message {
+  padding: 13px 15px;
+  border: 1px solid #f3d0ce;
+  border-radius: 10px;
+  background: #fff3f2;
+  color: #a12c26;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.ip-withdraw-note {
+  margin: -8px 0 0;
+  color: #718096;
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .ip-withdraw-form {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .ip-withdraw-title {
+    align-items: flex-start;
+  }
+
+  .ip-withdraw-balance {
+    padding: 19px;
+  }
+
+  .ip-withdraw-summary {
+    padding: 14px;
+  }
+}

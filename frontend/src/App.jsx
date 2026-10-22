@@ -1227,57 +1227,130 @@ const handleWithdrawalSubmit = (event) => {
     Request Withdrawal
   </button>
   
-  {showWithdrawalForm && (
-    <div style={{ marginTop: '20px' }}>
-      <h3>Request a Withdrawal</h3>
-      <p>
-        Enter the amount you want to withdraw and your M-Pesa
-        phone number.
-      </p>
+  
+    
+{showWithdrawalForm && (
+  <div className="ip-withdraw-form">
+    <div className="ip-withdraw-title">
+      <div className="ip-withdraw-icon">↗</div>
+      <div>
+        <h3>Request a withdrawal</h3>
+        <p>Withdraw your available funds to your M-Pesa account.</p>
+      </div>
+    </div>
 
-      <div style={{ marginBottom: '12px' }}>
+    <div className="ip-withdraw-balance">
+      <span>Available wallet balance</span>
+      <strong>
+        {walletBalance === null
+          ? 'Balance unavailable'
+          : formatMoney(walletBalance, 'KES')}
+      </strong>
+      <small>InvestPlus wallet · KES</small>
+    </div>
+
+    <form
+      className="ip-withdraw-fields"
+      onSubmit={handleWithdrawalSubmit}
+    >
+      <div className="ip-withdraw-field">
         <label htmlFor="withdrawal-amount">
-          Amount (KES)
+          Amount to withdraw
         </label>
-        <input
-          id="withdrawal-amount"
-          type="number"
-          min="1"
-          step="0.01"
-          value={withdrawalAmount}
-          onChange={(event) =>
-            setWithdrawalAmount(event.target.value)
-          }
-          placeholder="Enter amount"
-        />
+
+        <div className="ip-withdraw-input">
+          <span>KES</span>
+          <input
+            id="withdrawal-amount"
+            type="number"
+            min="1"
+            step="0.01"
+            value={withdrawalAmount}
+            onChange={(event) =>
+              setWithdrawalAmount(event.target.value)
+            }
+            placeholder="Enter amount"
+            required
+          />
+        </div>
+        <small>Enter an amount within your available balance.</small>
       </div>
 
-      <div style={{ marginBottom: '12px' }}>
+      <div className="ip-withdraw-field">
         <label htmlFor="withdrawal-phone">
           M-Pesa phone number
         </label>
-        <input
-          id="withdrawal-phone"
-          type="tel"
-          value={withdrawalPhone}
-          onChange={(event) =>
-            setWithdrawalPhone(event.target.value)
-          }
-          placeholder="e.g. 07XXXXXXXX"
-        />
+
+        <div className="ip-withdraw-input">
+          <span className="ip-phone-prefix">☎</span>
+          <input
+            id="withdrawal-phone"
+            type="tel"
+            value={withdrawalPhone}
+            onChange={(event) =>
+              setWithdrawalPhone(event.target.value)
+            }
+            placeholder="0712345678"
+            autoComplete="tel"
+            required
+          />
+        </div>
+        <small>
+          Use a Kenyan mobile number that can receive M-Pesa payments.
+        </small>
       </div>
 
-      
-      
+      <div className="ip-withdraw-summary">
+        <div>
+          <span>Withdrawal amount</span>
+          <strong>
+            {withdrawalAmount !== '' &&
+            Number.isFinite(Number(withdrawalAmount)) &&
+            Number(withdrawalAmount) > 0
+              ? formatMoney(Number(withdrawalAmount), 'KES')
+              : 'KES 0.00'}
+          </strong>
+        </div>
+
+        <div>
+          <span>Transaction fee</span>
+          <strong>To be confirmed</strong>
+        </div>
+
+        <div className="ip-withdraw-net">
+          <span>Estimated amount received</span>
+          <strong>Confirmed after fee calculation</strong>
+        </div>
+      </div>
+
+      {error && (
+        <div className="ip-withdraw-message" role="alert">
+          {error}
+        </div>
+      )}
+
       <button
-        type="button"
-        onClick={handleWithdrawalSubmit}
+        type="submit"
+        className="btn btn-primary ip-withdraw-submit"
+        disabled={
+          walletBalance === null ||
+          !withdrawalAmount ||
+          Number(withdrawalAmount) <= 0 ||
+          Number(withdrawalAmount) > Number(walletBalance) ||
+          !withdrawalPhone.trim()
+        }
       >
-        Submit Withdrawal Request
+        Continue withdrawal <span>→</span>
       </button>
 
-    </div>
-  )}
+      <p className="ip-withdraw-note">
+        Please verify your details before continuing. Withdrawal
+        requests are not submitted until secure processing is enabled.
+      </p>
+    </form>
+  </div>
+)}
+
 
 
   </section>
