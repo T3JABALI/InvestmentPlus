@@ -877,6 +877,45 @@ function PlaceholderPage({ type }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [referralInfo, setReferralInfo] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [withdrawalPhone, setWithdrawalPhone] = useState('');
+  const [showWithdrawalForm, setShowWithdrawalForm] = useState(false);
+
+  
+const handleWithdrawalSubmit = (event) => {
+  event.preventDefault();
+
+  setError('');
+
+  const amount = Number(withdrawalAmount);
+  const phone = withdrawalPhone.trim();
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    setError('Please enter a valid withdrawal amount.');
+    return;
+  }
+
+  if (!/^(?:0[17]\d{8}|\+254[17]\d{8}|254[17]\d{8})$/.test(phone)) {
+    setError('Please enter a valid Kenyan mobile number, such as 0712345678 or +254712345678.');
+    return;
+  }
+
+  if (walletBalance === null) {
+    setError('Your wallet balance is unavailable. Please try again later.');
+    return;
+  }
+
+  if (amount > Number(walletBalance)) {
+    setError('Your withdrawal amount exceeds your displayed wallet balance.');
+    return;
+  }
+
+  setError(
+    'Your details are valid, but withdrawal submission is not enabled yet. Your balance and withdrawal eligibility must first be verified securely.'
+  );
+};
+
 
   useEffect(() => {
     if (isAdmin || !config) return;
@@ -898,6 +937,26 @@ function PlaceholderPage({ type }) {
         transactions: '/api/finance/transactions',
         referrals: '/api/finance/referrals',
       }[last];
+
+      if (last === 'withdrawals') {
+  const walletResponse = await fetch(
+    `${API_BASE}/api/finance/overview`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    }
+  );
+
+  const walletData = await walletResponse.json().catch(() => ({}));
+
+  if (!walletResponse.ok) {
+    throw new Error(walletData.error || 'Unable to load wallet balance.');
+  }
+
+  setWalletBalance(walletData.balance);
+}
       if (!endpoint) return;
 
       setLoading(true);
@@ -1135,6 +1194,107 @@ function PlaceholderPage({ type }) {
 
       {!loading && !error && last === 'withdrawals' && (
         <section className="panel">
+          
+  <section className="panel">
+    <div className="panel-header">
+      <div>
+        <h2>My Wallet</h2>
+        <p>Your available balance for withdrawals.</p>
+      </div>
+    </div>
+
+    <div>
+      <h3>
+        {walletBalance === null
+          ? 'Balance unavailable'
+          : formatMoney(walletBalance, 'KES')}
+      </h3>
+      <p>
+        Your package purchase amount is not part of your
+        withdrawable balance.
+      </p>
+    </div>
+
+    
+  <button
+    type="button"
+    onClick={() => {
+      setError('');
+      setShowWithdrawalForm((current) => !current);
+    }}
+    disabled={walletBalance === null}
+  >
+    Request Withdrawal
+  </button>
+  
+  {showWithdrawalForm && (
+    <div style={{ marginTop: '20px' }}>
+      <h3>Request a Withdrawal</h3>
+      <p>
+        Enter the amount you want to withdraw and your M-Pesa
+        phone number.
+      </p>
+
+      <div style={{ marginBottom: '12px' }}>
+        <label htmlFor="withdrawal-amount">
+          Amount (KES)
+        </label>
+        <input
+          id="withdrawal-amount"
+          type="number"
+          min="1"
+          step="0.01"
+          value={withdrawalAmount}
+          onChange={(event) =>
+            setWithdrawalAmount(event.target.value)
+          }
+          placeholder="Enter amount"
+        />
+      </div>
+
+      <div style={{ marginBottom: '12px' }}>
+        <label htmlFor="withdrawal-phone">
+          M-Pesa phone number
+        </label>
+        <input
+          id="withdrawal-phone"
+          type="tel"
+          value={withdrawalPhone}
+          onChange={(event) =>
+            setWithdrawalPhone(event.target.value)
+          }
+          placeholder="e.g. 07XXXXXXXX"
+        />
+      </div>
+
+      
+  <p>
+    Package purchase money is not withdrawable. Your wallet
+    starts at KES 0 after subscribing, and only verified
+    earnings can become available for withdrawal.
+  </p>
+
+  <p>
+    Your first withdrawal becomes eligible on the 7th day
+    after subscribing to a package. After your first
+    withdrawal, you must have at least 5 active referrals
+    with packages to qualify for subsequent withdrawals.
+  </p>
+
+      
+      <button
+        type="button"
+        onClick={handleWithdrawalSubmit}
+      >
+        Submit Withdrawal Request
+      </button>
+
+    </div>
+  )}
+
+
+  </section>
+
           <div className="panel-header">
             <div>
               <h2>Withdrawal history</h2>
