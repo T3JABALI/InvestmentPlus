@@ -3,7 +3,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { z } = require('zod');
-
+const crypto = require('crypto');
 const { pool } = require('../db/pool');
 const { sendVerificationEmail } = require('../services/email');
 const {
@@ -26,6 +26,7 @@ const registerSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(254),
   password: passwordSchema,
+  referralCode: z.string().trim().max(20).optional(),
 });
 
 const loginSchema = z.object({
@@ -146,6 +147,9 @@ async function requireAuth(req, res, next) {
   }
 }
 
+function generateReferralCode() {
+  return `IP${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+}
 // REGISTER
 router.post('/register', async (req, res, next) => {
   let client;
@@ -165,6 +169,11 @@ router.post('/register', async (req, res, next) => {
 
     const { fullName, password } = parsed.data;
     const email = parsed.data.email.toLowerCase();
+    const referralCode = parsed.data.referralCode
+      ? parsed.data.referralCode.trim().toUpperCase()
+      : null;
+
+    const newReferralCode = generateReferralCode();
     const passwordHash = await bcrypt.hash(password, 12);
 
     const rawToken = generateVerificationToken();
@@ -177,13 +186,48 @@ router.post('/register', async (req, res, next) => {
     try {
       await client.query('BEGIN');
 
-      const result = await client.query(
-        `INSERT INTO users (full_name, email, password_hash)
-         VALUES ($1, $2, $3)
-         ON CONFLICT DO NOTHING
-         RETURNING id, full_name, email, role, email_verified, created_at`,
-        [fullName, email, passwordHash]
-      );
+      let referrerId = null;
+
+if (referralCode) {
+  const referrerResult = await client.query(
+    `SELECT id
+     FROM users
+     WHERE referral_code = $1
+     LIMIT 1`,
+    [referralCode]
+  );
+
+  if (!referrerResult.rowCount) {
+    await client.query('ROLLBACK');
+
+    return res.status(400).json({
+      error: 'The referral code is invalid.',
+      code: 'INVALID_REFERRAL_CODE',
+    });
+  }
+
+  referrerId = referrerResult.rows[0].id;
+}
+
+const result = await client.query(
+  `INSERT INTO users (
+     full_name,
+     email,
+     password_hash,
+     referral_code,
+     referred_by
+   )
+   VALUES ($1, $2, $3, $4, $5)
+   ON CONFLICT DO NOTHING
+   RETURNING id, full_name, email, role, email_verified, created_at`,
+  [
+    fullName,
+    email,
+    passwordHash,
+    newReferralCode,
+    referrerId,
+  ]
+);
 
       if (!result.rowCount) {
         await client.query('ROLLBACK');
